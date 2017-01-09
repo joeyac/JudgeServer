@@ -1,0 +1,71 @@
+# 2017.01.03 周二
+runner基本完成
+目前暂时采用只运行一个box
+在box下建立不同子目录的方式运行代码
+//缺陷：可能代码之间会互相影响
+
+
+不能采取上述方式
+还是采取不同代码在不同box中运行
+
+两次比较输出
+一次比较去掉行末空格换行
+一次比较去掉所有空格换行
+
+
+# todo test all possible error or status in isolate
+g++ a.cpp -w -std=c++11 -lm -o a.o
+isolate -b 3 -m 30240 -M run.meta -r run.error -i data.in -o run.out -v -v -v --run -- ./a.o
+
+isolate meta file sample:
+SG:
+exitsig:11
+time:0.144
+time-wall:0.271
+max-rss:19996
+csw-voluntary:6
+csw-forced:17
+status:SG
+message:Caught fatal signal 11
+(push 1 into queue<int> forever)
+
+exitsig:8
+time:0.016
+time-wall:0.209
+max-rss:6856
+csw-voluntary:5
+csw-forced:2
+
+status:SG
+message:Caught fatal signal 8
+(a=2,b=0 cout<<a/b<<endl)
+
+TLE:
+status:TO
+message:Time limit exceeded
+killed:1
+time:1.600
+time-wall:1.628
+max-rss:6592
+csw-voluntary:3
+csw-forced:5
+(while(1) )
+
+MLE:
+exitsig:11
+time:0.024
+time-wall:0.171
+max-rss:27272 /30240
+csw-voluntary:4
+csw-forced:1
+status:SG
+message:Caught fatal signal 11
+
+exitsig:11
+time:0.036
+time-wall:0.179
+max-rss:37240 /40240
+csw-voluntary:5
+csw-forced:7
+status:SG
+message:Caught fatal signal 11
