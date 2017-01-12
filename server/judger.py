@@ -7,7 +7,7 @@ import hashlib
 
 from multiprocessing import Pool
 
-from config import TEST_CASE_DIR, JUDGER_RUN_LOG_PATH, JUDGE_DEFAULT_PATH
+from config import TEST_CASE_DIR, JUDGE_DEFAULT_PATH
 from utils import replace_blank
 from _runner import Runner
 from result import RESULT

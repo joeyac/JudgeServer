@@ -18,7 +18,6 @@ from config import JUDGE_DEFAULT_PATH  # '/var/local/lib/isolate/'
 from compiler import Compiler
 from judger import Judger
 from exception import JudgeServerError, CompileError, SandboxError
-import hashlib
 import socket
 import os
 

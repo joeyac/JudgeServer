@@ -8,13 +8,13 @@ import commands
 import hashlib
 import shutil
 
-from config import TOKEN_FILE_PATH, LOG_BASE, BASE_PATH, JUDGE_DEFAULT_PATH, DEBUG
+from config import TOKEN_FILE_PATH, JUDGE_DEFAULT_PATH, DEBUG
 from exception import SandboxError,JudgeServerError
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s [%(threadName)s:%(thread)d] [%(name)s:%(lineno)d]'
                            ' [%(module)s:%(funcName)s] [%(levelname)s]- %(message)s',
-                    filename='log/judge.log')
+                    filename='/log/judge.log')
 
 logger = logging
 

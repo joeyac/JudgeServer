@@ -5,11 +5,6 @@ import os
 DEBUG = True
 
 BASE_PATH = os.getcwd()
-LOG_BASE = os.path.join(BASE_PATH, "log")
-
-
-COMPILER_LOG_PATH = os.path.join(LOG_BASE, "compile.log").encode("utf-8")
-JUDGER_RUN_LOG_PATH = os.path.join(LOG_BASE, "judger.log").encode("utf-8")
 
 TOKEN_FILE_PATH = os.path.join(BASE_PATH, "token.txt")
 TEST_CASE_DIR = os.path.join(BASE_PATH, "test_case")
@@ -19,13 +14,6 @@ JUDGE_DEFAULT_PATH = '/var/local/lib/isolate/'
 # we need redirect stand input to data.in,but do not want user code get data.out,
 # so set this to a random variable so that the test_case dir in sandbox can not be access by user code
 TEST_CASE_IN_DIR_NAME = 'aoinmw3qjr3qeqq3'
-
-RESULT = {
-    'accepted': 0,
-    'wrong answer': 1,
-
-}
-
 
 # TLE MLE OLE WA PE AC RE CE UE
 # time limit exceed

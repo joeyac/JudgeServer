@@ -1,11 +1,9 @@
 # coding=utf-8
 from __future__ import unicode_literals
 
-import json
 import os
 from config import JUDGE_DEFAULT_PATH
-from exception import SandboxError, CompileError, JudgeServerError
-from utils import get_meta_info
+from exception import SandboxError, CompileError
 from _runner import Runner
 
 
