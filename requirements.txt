@@ -3,3 +3,4 @@ flask-restful
 flask-httpauth
 psutil
 gunicorn
+futures

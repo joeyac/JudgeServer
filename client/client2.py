@@ -88,7 +88,7 @@ if __name__ == "__main__":
 s1 = s.split(" ")
 print int(s1[0]) - int(s1[1])"""
 
-    client = JudgeServerClient(token="token", server_base_url="http://localhost:5000/")
+    client = JudgeServerClient(token="token", server_base_url="http://localhost:8080/")
     print client.ping(), "\n\n"
     print client.judge(src=c_src,submission_id='c',language_code=1,time_limit=1000,memory_limit=64*1024,
                        test_case_id='b',), "\n\n"

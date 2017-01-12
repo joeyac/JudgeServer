@@ -13,7 +13,6 @@ runner基本完成
 一次比较去掉所有空格换行
 
 
-# todo test all possible error or status in isolate
 g++ a.cpp -w -std=c++11 -lm -o a.o
 isolate -b 3 -m 30240 -M run.meta -r run.error -i data.in -o run.out -v -v -v --run -- ./a.o
 
