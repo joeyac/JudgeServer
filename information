@@ -68,3 +68,15 @@ csw-voluntary:5
 csw-forced:7
 status:SG
 message:Caught fatal signal 11
+
+
+
+docker 构建流程
+1.构建Dockerfile
+    docker build -t ustb_judger:version .
+2.从image运行container
+    docker run -t --privileged ustb_judger:version（ctrl+c退出）
+3.查看本地ip
+    docker inspect --format='{{json .NetworkSettings.Networks}}' d82816b60724
+4.进入容器查看log
+    docker exec -i -t 22c8102566a8 /bin/bash
