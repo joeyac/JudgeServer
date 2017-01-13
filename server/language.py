@@ -42,12 +42,12 @@ languages = {
             "max_cpu_time": 3.0,
             "max_real_time": 5.0,
             "max_memory": 512 * 1024,
-            "compile_command": "/usr/lib/jvm/java-9-oracle/bin/javac {src_name} -d {exe_name} -encoding UTF8"
+            "compile_command": "/usr/lib/jvm/java-8-oracle/bin/javac {src_name} -d {exe_name} -encoding UTF8"
         },
         "run": {
             "group_memory": True,
             "exe_name": "Main",
-            "command": "/usr/lib/jvm/java-9-oracle/bin/java -cp {exe_name}  Main",
+            "command": "/usr/lib/jvm/java-8-oracle/bin/java -cp {exe_name}  Main",
         }
     },
     4: {
