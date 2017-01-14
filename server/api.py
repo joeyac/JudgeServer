@@ -128,9 +128,15 @@ class JudgeAPI(Resource):
         args = self.reqparse.parse_args()
         try:
             result = self.judge(args)
-
             return result
-        except (JudgeServerError, CompileError, SandboxError) as e:
+        except CompileError as e:
+            logger.exception(e)
+            ret = dict()
+            ret["err"] = e.__class__.__name__
+            ret["data"] = e.message
+            result = {"status": RESULT["compile_error"], "info": ret,}
+            return result
+        except (JudgeServerError, SandboxError) as e:
             logger.exception(e)
             ret = dict()
             ret["err"] = e.__class__.__name__

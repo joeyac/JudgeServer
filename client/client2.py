@@ -1,6 +1,5 @@
 # coding=utf-8
 from __future__ import unicode_literals
-
 import hashlib
 import json
 
@@ -52,7 +51,7 @@ if __name__ == "__main__":
     #include <stdio.h>
     int main(){
         int a, b;
-        scanf("%d%d", &a, &b);
+        scanf("%d%d", &c, &b);
         printf("%d\n", a+b);
         return 0;
     }
