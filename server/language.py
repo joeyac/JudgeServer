@@ -65,5 +65,21 @@ languages = {
             "exe_name": "solution.pyc",
             "command": "/usr/bin/python {exe_name}",
         }
+    },
+    5: {
+        "name": "python3",
+        "compile": {
+            "group_memory": True,
+            "src_name": "solution.py",
+            "exe_name": "solution.py",
+            "max_cpu_time": 3000,
+            "max_real_time": 5000,
+            "max_memory": 128 * 1024,
+            "compile_command": "/usr/bin/python3 -m py_compile {src_name}",
+        },
+        "run": {
+            "exe_name": "solution.py",
+            "command": "/usr/bin/python3 {exe_name}",
+        }
     }
 }
