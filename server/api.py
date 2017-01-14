@@ -10,16 +10,20 @@
 # POST          http://[hostname]/api/[submission_id]                           update judge_task
 from flask import Flask, jsonify, make_response
 from flask_restful import Api, Resource, reqparse
+from werkzeug.datastructures import FileStorage
 from utils import token as base_token, server_info, InitIsolateEnv, logger
 from flask_httpauth import HTTPTokenAuth
 from language import languages
 from result import RESULT
-from config import JUDGE_DEFAULT_PATH  # '/var/local/lib/isolate/'
+from config import BASE_PATH ,JUDGE_DEFAULT_PATH  # '/var/local/lib/isolate/'
 from compiler import Compiler
 from judger import Judger
 from exception import JudgeServerError, CompileError, SandboxError
+from zipfile import ZipFile
 import socket
+import shutil
 import os
+
 
 
 app = Flask(__name__)
@@ -150,8 +154,45 @@ class JudgeAPI(Resource):
             return ret
 
 
+class SyncAPI(Resource):
+    decorators = [auth.login_required]
+
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser()
+        self.reqparse.add_argument('test_case_id', type=str, required=True)
+        self.reqparse.add_argument('file', type=FileStorage, location='files', required=True)
+
+    def post(self):
+        args = self.reqparse.parse_args()
+        test_case_id = args['test_case_id']
+        s_file = args['file']
+
+        if test_case_id == 'ALL':
+            aim = os.path.join(BASE_PATH, 'test_case')
+        else:
+            aim = os.path.join(BASE_PATH, 'test_case', str(test_case_id))
+        if os.path.exists(aim):
+            shutil.rmtree(aim, ignore_errors=True)
+
+        os.mkdir(aim)
+        os.chmod(aim, 0777)
+
+        path = os.path.join('/tmp', s_file.filename)
+        s_file.save(path)
+
+        zipfile = ZipFile(path)
+        for sub_file in zipfile.namelist():
+            zipfile.extract(sub_file, aim)
+            os.chmod(os.path.join(aim, sub_file), 0777)
+        zipfile.close()
+
+        os.remove(path)
+        return "Done!"
+
 api.add_resource(PingAPI, '/ping/', endpoint='ping')
 api.add_resource(JudgeAPI, '/judge/', endpoint='judge')
+api.add_resource(SyncAPI, '/sync/', endpoint='sync')
 
 if __name__ == '__main__':
     app.run(debug=True)
+

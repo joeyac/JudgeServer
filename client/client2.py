@@ -51,8 +51,8 @@ if __name__ == "__main__":
     #include <stdio.h>
     int main(){
         int a, b;
-        scanf("%d%d", &c, &b);
-        printf("%d\n", a+b);
+        scanf("%d%d", &a, &b);
+        printf(" %d\n", a+b);
         return 0;
     }
     """
@@ -61,10 +61,12 @@ if __name__ == "__main__":
     #include <iostream>
 
     using namespace std;
-
+    const int maxn=3e7+1;
+    int c[maxn];
     int main()
     {
         int a,b;
+        for(int i=0;i<maxn;i++)c[i]=1;
         cin >> a >> b;
         cout << a+b << endl;
         return 0;
