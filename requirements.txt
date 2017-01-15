@@ -4,3 +4,4 @@ flask-httpauth
 psutil
 gunicorn
 futures
+requests

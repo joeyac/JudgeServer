@@ -2,7 +2,16 @@
 from __future__ import unicode_literals
 import os
 
-DEBUG = True
+# SET debug to a number range[0,16)
+DEBUG = 15
+
+DEBUG_RUNNER = 0
+DEBUG_COMPILER = 1
+DEBUG_JUDGER = 2
+DEBUG_API = 3
+# debug number:
+# binary X|X|X|X
+# runner|compiler|judger|api
 
 BASE_PATH = os.getcwd()
 

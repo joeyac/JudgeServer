@@ -6,7 +6,7 @@ sys.setdefaultencoding('utf-8')
 
 
 import os
-from config import JUDGE_DEFAULT_PATH
+from config import JUDGE_DEFAULT_PATH ,DEBUG_COMPILER, DEBUG
 from exception import SandboxError, CompileError
 from _runner import Runner
 
@@ -58,35 +58,13 @@ class Compiler(object):
                 or compiler.result['status'] == Runner.RESULT['memory_limit_exceeded']:
             return self.compile_config['exe_name']
         elif compiler.result['status'] == Runner.RESULT['system_error']:
-            print compiler.result
+            if DEBUG >> DEBUG_COMPILER & 1:
+                print compiler.result
             info = compiler.result['info']
             raise SandboxError("info: %s" % str(info))
         else:
+            if DEBUG >> DEBUG_COMPILER & 1:
+                print compiler.result
             info = compiler.result['info']
             raise CompileError("info: %s" % str(info))
-
-        # v1.0 move result fixing into _runner
-        # compiler_out_path = os.path.join(JUDGE_DEFAULT_PATH, self.box_id, 'box', compiler_out)
-        # if compiler.status == 0 or 256:
-        #     meta = get_meta_info(meta_file)
-        #     if 'OK' in compiler.result:
-        #         return self.compile_config['exe_name']
-        #     else:
-        #         info = None
-        #
-        #         if os.path.exists(compiler_out_path):
-        #             with open(compiler_out_path) as f:
-        #                 info = f.read().strip()
-        #         res = {
-        #             'message': compiler.result,
-        #             'status': meta['status'] if meta.get('status') else None,
-        #             'error': info,
-        #         }
-        #         raise CompileError("Compiler runtime error, info: %s" % json.dumps(res).encode('utf-8'))
-        # else:
-        #     if os.path.exists(compiler_out_path):
-        #         with open(compiler_out_path) as f:
-        #             info = f.read().strip()
-        #             raise JudgerError("Sandbox error, info: %s" % json.dumps(info).encode('utf-8'))
-        #     raise JudgerError('Sandbox error')
 

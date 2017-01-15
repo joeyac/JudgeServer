@@ -15,7 +15,7 @@ from utils import token as base_token, server_info, InitIsolateEnv, logger
 from flask_httpauth import HTTPTokenAuth
 from language import languages
 from result import RESULT
-from config import BASE_PATH ,JUDGE_DEFAULT_PATH  # '/var/local/lib/isolate/'
+from config import BASE_PATH, JUDGE_DEFAULT_PATH  # '/var/local/lib/isolate/'
 from compiler import Compiler
 from judger import Judger
 from exception import JudgeServerError, CompileError, SandboxError

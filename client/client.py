@@ -1,9 +1,6 @@
 # coding=utf-8
 from __future__ import unicode_literals
-
 import hashlib
-import json
-
 import requests
 
 
@@ -53,7 +50,7 @@ if __name__ == "__main__":
     int main(){
         int a, b;
         scanf("%d%d", &a, &b);
-        printf("%d\n", a+b);
+        printf(" %d\n", a+b);
         return 0;
     }
     """
@@ -62,10 +59,12 @@ if __name__ == "__main__":
     #include <iostream>
 
     using namespace std;
-
+    const int maxn=3e7+1;
+    int c[maxn];
     int main()
     {
         int a,b;
+        for(int i=0;i<maxn;i++)c[i]=1;
         cin >> a >> b;
         cout << a+b << endl;
         return 0;
@@ -88,15 +87,26 @@ if __name__ == "__main__":
 s1 = s.split(" ")
 print int(s1[0]) + int(s1[1])"""
 
-    client = JudgeServerClient(token="token", server_base_url="http://localhost:5000/")
+    py3_src = """s = input()
+s1 = s.split(" ")
+print(int(s1[0]) + int(s1[1]))"""
+
+    client = JudgeServerClient(token="token", server_base_url="http://172.17.0.2:8080/")
+    # client = JudgeServerClient(token="token", server_base_url="http://localhost:5000/")
     print client.ping(), "\n\n"
+    x = raw_input('press enter to continue...')
     print client.judge(src=c_src,submission_id='c',language_code=1,time_limit=1000,memory_limit=64*1024,
                        test_case_id='b',), "\n\n"
+    x = raw_input('press enter to continue...')
     print client.judge(src=cpp_src,submission_id='c++',language_code=2,time_limit=1000,memory_limit=64*1024,
                        test_case_id='b',), "\n\n"
-
+    x = raw_input('press enter to continue...')
     print client.judge(src=py2_src,submission_id='python2',language_code=4,time_limit=1000,memory_limit=64*1024,
                        test_case_id='b',), "\n\n"
-
+    x = raw_input('press enter to continue...')
+    print client.judge(src=py3_src,submission_id='python3',language_code=5,time_limit=1000,memory_limit=64*1024,
+                       test_case_id='b',), "\n\n"
+    x = raw_input('press enter to continue...')
     print client.judge(src=java_src,submission_id='java',language_code=3,time_limit=1000,memory_limit=128*1024,
                        test_case_id='b',), "\n\n"
+    x = raw_input('press enter to continue...')

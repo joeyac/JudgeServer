@@ -11,7 +11,7 @@ from config import TEST_CASE_DIR, JUDGE_DEFAULT_PATH
 from utils import replace_blank
 from _runner import Runner
 from result import RESULT
-from config import DEBUG
+from config import DEBUG, DEBUG_JUDGER
 
 from exception import JudgeServerError
 
@@ -136,6 +136,8 @@ class Judger(object):
         else:
             if run_result['status'] == Runner.RESULT['time_limit_exceeded'] or Runner.RESULT['memory_limit_exceeded']:
                 pass
+            elif run_result['status'] == Runner.RESULT['output_limit_exceeded']:
+                pass
             elif run_result['status'] == Runner.RESULT['floating_point_exception']:
                 run_result['status'] = RESULT['runtime_error']
                 run_result['info'] = 'floating_point_exception'
@@ -150,7 +152,7 @@ class Judger(object):
         tmp_results = []
         results = []
         for case_id, info in self.test_case_info.iteritems():
-            if DEBUG:
+            if DEBUG >> DEBUG_JUDGER & 1:
                 print 'run the '+ str(case_id) + ' test case...'
             tmp_results.append(self.pool.apply_async(_run, (self, info)))
         self.pool.close()

@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 from config import JUDGE_DEFAULT_PATH, TEST_CASE_DIR, TEST_CASE_IN_DIR_NAME
 from utils import get_meta_info
-from config import DEBUG
+from config import DEBUG, DEBUG_RUNNER
 import os
 import commands
 
@@ -143,7 +143,7 @@ class Runner(object):
         run_args = str(self.run_args)
         cmd += str(run_args)
 
-        if DEBUG:
+        if DEBUG >> DEBUG_RUNNER & 1:
             print cmd
 
         status, result = commands.getstatusoutput(cmd)

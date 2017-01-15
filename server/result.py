@@ -11,7 +11,8 @@ RESULT = {
     "presentation_error": 5,
     "wrong_answer": 6,
     "system_error": 7,
-    "waiting": 8
+    "output_limit_exceeded": 8,
+    "waiting": 9,
 }
 
 # class Runner(object):
