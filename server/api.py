@@ -1,3 +1,4 @@
+# coding=utf-8
 # sudo apt-get install python-flask
 # sudo apt-get install python-flask-restful
 # ===========   ===================================================             ==============
@@ -87,6 +88,8 @@ class JudgeAPI(Resource):
         self.reqparse.add_argument('test_case_id', type=str, required=True,
                                    help='No test_case_id provided', location='json')
 
+        self.reqparse.add_argument('spj_code', type=str, location='json')
+
         self.reqparse.add_argument('submission_id', type=str, location='json')
         super(JudgeAPI, self).__init__()
 
@@ -100,6 +103,8 @@ class JudgeAPI(Resource):
             test_case_id = args['test_case_id']
             path = os.path.join(JUDGE_DEFAULT_PATH, str(box_id))
             host_name = socket.gethostname()
+            is_spj = True if 'spj_code' in args else False
+
             # write source code into file
             try:
                 src_path = os.path.join(path, 'box', src_name)
@@ -108,14 +113,27 @@ class JudgeAPI(Resource):
                 f.close()
             except Exception as e:
                 raise JudgeServerError('unable write code to file')
+            # write spj code into file
+            if is_spj:
+                spj_src_path = os.path.join(path, 'box', 'spj.c')
+                f = open(spj_src_path, "w")
+                f.write(args['spj_code'].encode("utf8"))
+                f.close()
 
             # compile
             compiler = Compiler(compile_config=compile_config, box_id=box_id)
             exe_name = compiler.compile()
+            # compile spj code
+            if is_spj:
+                spj_config = languages[1]['compile']
+                spj_config['src_name'] = 'spj.c'
+                spj_config['exe_name'] = 'spj'
+                spj_compiler = Compiler(compile_config=spj_config, box_id=box_id)
+                spj_name = spj_compiler.compile()
 
             # run
             judger = Judger(run_config=run_config,max_cpu_time=time_limit, max_memory=memory_limit,
-                            test_case_id=test_case_id, box_id=box_id)
+                            test_case_id=test_case_id, box_id=box_id, is_spj=is_spj)
             result = judger.run()
             judge_result = {"status": RESULT["accepted"], "info": result,
                             "accepted_answer_time": None, "server": host_name}
@@ -132,26 +150,26 @@ class JudgeAPI(Resource):
         args = self.reqparse.parse_args()
         try:
             result = self.judge(args)
-            return result
+            return {'code': 0, 'result': result}
         except CompileError as e:
             logger.exception(e)
             ret = dict()
             ret["err"] = e.__class__.__name__
             ret["data"] = e.message
             result = {"status": RESULT["compile_error"], "info": ret,}
-            return result
+            return {'code': 0, 'result': result}
         except (JudgeServerError, SandboxError) as e:
             logger.exception(e)
             ret = dict()
             ret["err"] = e.__class__.__name__
             ret["data"] = e.message
-            return ret
+            return {'code': 1, 'result': ret}
         except Exception as e:
             logger.exception(e)
             ret = dict()
             ret["err"] = "JudgeClientError"
             ret["data"] = e.__class__.__name__ + ":" + e.message
-            return ret
+            return {'code': 2, 'result': ret}
 
 
 class SyncAPI(Resource):

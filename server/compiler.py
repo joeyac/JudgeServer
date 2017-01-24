@@ -54,17 +54,10 @@ class Compiler(object):
                           group_memory=True if group_memory else False,
                           )
         compiler.run()
-        if compiler.result['status'] == Runner.RESULT['success'] \
-                or compiler.result['status'] == Runner.RESULT['memory_limit_exceeded']:
+        if compiler.result['status'] == Runner.RESULT['success']:
             return self.compile_config['exe_name']
-        elif compiler.result['status'] == Runner.RESULT['system_error']:
-            if DEBUG >> DEBUG_COMPILER & 1:
-                print compiler.result
-            info = compiler.result['info']
-            raise SandboxError("info: %s" % str(info))
         else:
             if DEBUG >> DEBUG_COMPILER & 1:
                 print compiler.result
-            info = compiler.result['info']
-            raise CompileError("info: %s" % str(info))
-
+                info = compiler.result['info']
+                raise CompileError("info: %s" % str(info))

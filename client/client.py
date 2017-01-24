@@ -11,6 +11,7 @@ class JudgeServerClientError(Exception):
 class JudgeServerClient(object):
     def __init__(self, token, server_base_url):
         self.token = hashlib.sha256(token).hexdigest()
+        # 3c469e9d6c5875d37a43f353d4f88e61fcf812c66eee3457465a40b0da4153e0
         self.server_base_url = server_base_url.rstrip("/")
 
     def _request(self, url, data=None):

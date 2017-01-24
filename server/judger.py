@@ -7,7 +7,7 @@ import hashlib
 
 from multiprocessing import Pool
 
-from config import TEST_CASE_DIR, JUDGE_DEFAULT_PATH
+from config import TEST_CASE_DIR, JUDGE_DEFAULT_PATH, TEST_CASE_IN_DIR_NAME
 from utils import replace_blank
 from _runner import Runner
 from result import RESULT
@@ -23,7 +23,8 @@ def _run(instance, test_file_info):
 
 
 class Judger(object):
-    def __init__(self, run_config, max_cpu_time, max_memory, test_case_id, box_id):
+    def __init__(self, run_config, max_cpu_time, max_memory, test_case_id, box_id,
+                 is_spj=False):
         self.run_config = run_config
         self.max_cpu_time = max_cpu_time
         self.max_memory = max_memory
@@ -35,6 +36,8 @@ class Judger(object):
         self.out_put_dir = os.path.join(JUDGE_DEFAULT_PATH, box_id, 'box')
         self.test_case_info = self._load_test_case_info()
         self.pool = Pool(processes=psutil.cpu_count())
+
+        self.is_spj = is_spj
 
     def _load_test_case_info(self):
         try:
@@ -108,7 +111,7 @@ class Judger(object):
         judge_error = 'judger.error'
 
         judger = Runner(max_cpu_time=self.max_cpu_time,
-                        max_real_time=self.max_cpu_time*3,
+                        max_real_time=self.max_cpu_time*2,
                         max_memory=self.max_memory,
                         box_id=self.box_id,
                         max_output_size=max_output_size if max_output_size else 1024*1024,  # 1G 输出文件最大不可能超过1G 否则输出OLE
@@ -126,21 +129,52 @@ class Judger(object):
         run_result['test_case'] = input_file
         if run_result['status'] == Runner.RESULT['success']:  # run compare
             # 0 AC 1 PE -1 WA
-            signer = self._compare_output(out_file_name=user_out_file_name)
-            if not signer:
-                run_result['status'] = RESULT['accepted']
-            elif signer == 1:
-                run_result['status'] = RESULT['presentation_error']
+            # is or not spj
+            if self.is_spj:
+                std_in = os.path.join('/' + TEST_CASE_IN_DIR_NAME, test_file_info['in']).encode("utf-8")
+                std_out = os.path.join('/' + TEST_CASE_IN_DIR_NAME, test_file_info['out']).encode("utf-8")
+                spj_cmd = './spj {std_in} {std_out} {user_out}'
+                spj_cmd = spj_cmd.format(std_in=std_in,
+                                         std_out=std_out,
+                                         user_out=user_out_file_name)
+
+                spj = Runner(max_cpu_time=self.max_cpu_time,
+                             max_real_time=self.max_cpu_time*2,
+                             max_memory=self.max_memory,
+                             box_id=self.box_id,
+                             max_output_size=1024,
+                             max_process_number=-1,
+                             input_file=input_file,
+                             output_file='spj.out',
+                             error_file='spj.out',
+                             meta_file='spj.meta',
+                             run_args=spj_cmd,
+                             input_file_dir=os.path.join(TEST_CASE_DIR, self.test_case_id)
+                        )
+                spj.run()
+                spj_result = spj.result
+                status = spj_result['info']['exitcode']
+                if  status == 0:
+                    run_result['status'] = RESULT['accepted']
+                elif status == 1:
+                    run_result['status'] = RESULT['wrong_answer']
+                elif status == 2:
+                    run_result['status'] = RESULT['presentation_error']
+                else:
+                    run_result['status'] = RESULT['system_error']
             else:
-                run_result['status'] = RESULT['wrong_answer']
+                signer = self._compare_output(out_file_name=user_out_file_name)
+                if not signer:
+                    run_result['status'] = RESULT['accepted']
+                elif signer == 1:
+                    run_result['status'] = RESULT['presentation_error']
+                else:
+                    run_result['status'] = RESULT['wrong_answer']
         else:
             if run_result['status'] == Runner.RESULT['time_limit_exceeded'] or Runner.RESULT['memory_limit_exceeded']:
                 pass
             elif run_result['status'] == Runner.RESULT['output_limit_exceeded']:
                 pass
-            elif run_result['status'] == Runner.RESULT['floating_point_exception']:
-                run_result['status'] = RESULT['runtime_error']
-                run_result['info'] = 'floating_point_exception'
             elif run_result['status'] == Runner.RESULT['unknown_error'] or Runner.RESULT['runtime_error']:
                 run_result['status'] = RESULT['runtime_error']
             else:
