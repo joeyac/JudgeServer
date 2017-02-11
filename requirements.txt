@@ -5,3 +5,5 @@ psutil
 gunicorn
 futures
 requests
+robobrowser
+beautifulsoup4

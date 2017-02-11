@@ -26,7 +26,6 @@ import shutil
 import os
 
 
-
 app = Flask(__name__)
 api = Api(app)
 auth = HTTPTokenAuth(scheme='Token')
@@ -210,6 +209,26 @@ class SyncAPI(Resource):
 api.add_resource(PingAPI, '/ping/', endpoint='ping')
 api.add_resource(JudgeAPI, '/judge/', endpoint='judge')
 api.add_resource(SyncAPI, '/sync/', endpoint='sync')
+
+
+class Test1(Resource):
+    def get(self):
+        info = server_info()
+        print(info)
+        # return {'info': info}
+
+
+class Test2(Resource):
+    def get(self):
+        import time
+        time.sleep(10)
+        info = server_info()
+        print(info)
+        # return {'info': info}
+
+
+api.add_resource(Test1, '/test1/', endpoint='test1')
+api.add_resource(Test2, '/test2/', endpoint='test2')
 
 if __name__ == '__main__':
     app.run(debug=True)
