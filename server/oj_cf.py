@@ -2,7 +2,8 @@ from utils import logger
 from robobrowser import RoboBrowser
 from bs4 import BeautifulSoup
 from urllib2 import urlopen
-
+import time
+import html5lib
 
 class CF:
     # base information:
@@ -13,6 +14,10 @@ class CF:
 
     # result
     INFO = ['RunID', 'Submit Time', 'Author', 'Pro.ID', 'Language', 'Judge Status', 'Time', 'Memory']
+    # map to compatible result
+    # vid v_run_id v_submit_time status time memory length language v_user
+    MAP = ['v_run_id', 'v_submit_time', 'v_user', 'problem', 'language', 'status', 'time', 'memory']
+    # vid length
 
     # language
     LANGUAGE = {
@@ -30,9 +35,10 @@ class CF:
     def __init__(self, user_id, password):
         self.user_id = user_id
         self.password = password
-        self.browser = RoboBrowser()
+        self.browser = RoboBrowser(parser='html5lib')
         self.run_id = ''
         self.pre_id = ''
+        self.code_len = None
 
     def login(self):
         try:
@@ -61,10 +67,10 @@ class CF:
             logger.error("Login status check failed.")
             return False
 
-        logger.info('Login Successful!')
         return True
 
     def submit(self, problem_id, language, src):
+        self.code_len = len(src.encode('utf-8'))
         problem_id = str(problem_id).upper()
         try:
             language = CF.LANGUAGE[str(language).upper()]
@@ -85,24 +91,6 @@ class CF:
                            '(probably because you have submit the same file before.)')
             return False
 
-        logger.info('Submit Successful')
-        return True
-
-    def init_id(self):
-        if self.pre_id != '':
-            return True
-        url = CF.URL_STATUS + str(self.user_id)
-        page = urlopen(url, timeout=5)
-        soup = BeautifulSoup(page, 'html5lib')
-        tables = soup.find('table', {'class': 'status-frame-datatable'})
-        tmp = []
-        for row in tables.findAll('tr'):
-            cols = row.findAll('td')
-            cols = [ele.text.strip() for ele in cols]
-            tmp = [ele.replace(u'\xa0', u' ') for ele in cols if ele]
-            if len(tmp) == 8:
-                break
-        self.pre_id = tmp[0]
         return True
 
     def result(self):
@@ -110,22 +98,90 @@ class CF:
         page = urlopen(url, timeout=5)
         soup = BeautifulSoup(page, 'html5lib')
 
-        tables = soup.find('table', {'class': 'status-frame-datatable'})
-        tmp = []
-        find = False
-        for row in tables.findAll('tr'):
-            cols = row.findAll('td')
+        table = soup.find('table', {'class': 'status-frame-datatable'})
+        table_body = table.find('tbody')
+        rows = table_body.find_all('tr')
+        data = []
+        for row in rows:
+            cols = row.find_all('td')
             cols = [ele.text.strip() for ele in cols]
-            tmp = [ele.replace(u'\xa0', u' ') for ele in cols if ele]
-            if len(tmp) == 8:
-                if tmp[0] == self.pre_id:
-                    break
-                if not find:
-                    if self.run_id == '' or self.run_id == tmp[0]:
-                        find = True
-                        self.run_id = tmp[0]
-            if find:
-                break
-        if not find:
-            logger.info("Can not find submissions!")
-            return True
+            data.append([ele.replace(u'\xa0', u' ') for ele in cols if ele])  # No need:Get rid of empty values
+
+        latest = data[1]
+        wait = ['Running', 'In queue']
+
+        res = {}
+        for i in range(8):
+            res[CF.MAP[i]] = latest[i]
+        res['length'] = '{len} B'.format(len=self.code_len)
+        res['vid'] = str(res['problem']).split(' - ')[0]
+
+        for i in range(2):
+            if res['status'] == wait[i]:
+                return False, res
+
+        return True, res
+
+
+def cf_submit(problem_id, language_name, src_code, username='ineedAC', password='x970307jw'):
+    """
+    :param problem_id: codeforces problem id, consist of contest id and problem char,like 367D
+    :type problem_id: string
+    :param language_name: code language name, declare in CF.LANGUAGE
+    :type language_name: string
+    :param src_code: source code of submission
+    :type src_code: string
+    :param username: submit user name, default using 'ineedAC'
+    :type username: string
+    :param password: submit user password, default using 'x970307jw'
+    :type password: string
+    :return: compatible result, if error occur, return empty dict
+    :rtype: dict
+    """
+    logger.info('Codeforces virtual judge start.')
+    cf = CF(username, password)
+    if cf.login():
+        logger.info('[{user}] login success.'.format(user=username))
+
+        if cf.submit(problem_id, language_name, src_code):
+            logger.info('[{pid},{lang}] submit success.'.format(pid=problem_id, lang=language_name))
+
+            status, result = cf.result()
+            while not status:
+                status, result = cf.result()
+                if result:
+                    logger.info('status:{status}.'.format(status=result['status']))
+                time.sleep(1)
+            logger.info(result)
+            logger.info('Codeforces virtual judge end.')
+            return result
+        else:
+            logger.error('[{pid},{lang}] submit error.'.format(pid=problem_id, lang=language_name))
+            return {}
+    else:
+        logger.error('[{user}] login failed.'.format(user=username))
+        return {}
+
+
+if __name__ == '__main__':
+    pid = '1A'
+    lang = 'g++'
+    src = '''
+    #include <iostream>
+    using namespace std;
+    int n,m,a;
+    long long x,y;
+    int main() {
+        cin>>n>>m>>a;
+        x=n/a+(n%a==0?0:1);
+        y=m/a+(m%a==0?0:1);
+        cout<<x*y<<endl;
+        return 0;
+        //fuck you you
+    }
+    '''
+    cf_submit(pid, lang, src)
+    # uid = 'ineedAC'
+    # pwd = 'x970307jw'
+    # c = CF(uid, pwd)
+    # print c.result()

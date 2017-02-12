@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 from utils import logger
 from bs4 import BeautifulSoup
-import re
 import html5lib
 import urllib, urllib2, cookielib
+import time
 
 
 class HDU:
@@ -22,8 +22,21 @@ class HDU:
     }
 
     # result
-    INFO = ['RunID', 'Submit Time', 'Judge Status', 'Pro.ID', 'Exe.Time', 'Exe.Memory', 'Code Len', 'Language',
+    INFO = ['Run ID', 'Submit Time', 'Judge Status', 'Pro.ID', 'Exe.Time', 'Exe.Memory', 'Code Len.', 'Language',
             'Author']
+    # map to compatible result
+    # vid v_run_id v_submit_time status time memory length language v_user
+    MAP = {
+        'Run ID': 'v_run_id',
+        'Submit Time': 'v_submit_time',
+        'Judge Status': 'status',
+        'Pro.ID': 'vid',
+        'Exe.Time': 'time',
+        'Exe.Memory': 'memory',
+        'Code Len.': 'length',
+        'Language': 'language',
+        'Author': 'v_user',
+    }
     # language
     LANGUAGE = {
         'G++': '0',
@@ -60,7 +73,6 @@ class HDU:
             request = urllib2.Request(HDU.URL_LOGIN, post_data, HDU.headers)
             response = self.opener.open(request).read()
             if response.find('signout') > 0:
-                logger.info("Login successful!")
                 return True
             else:
                 logger.warning("Login failed.")
@@ -69,11 +81,11 @@ class HDU:
             logger.error("Login method error.")
             return False
 
-    def submit(self, problem_id, language, src):
+    def submit(self, problem_id, language, src_code):
         submit_data = dict(
             problemid=problem_id,
             language=HDU.LANGUAGE[language.upper()],
-            usercode=src,
+            usercode=src_code,
             check='0',
         )
         self.problem_id = problem_id
@@ -81,7 +93,6 @@ class HDU:
         try:
             request = urllib2.Request(HDU.URL_SUBMIT, post_data, HDU.headers)
             self.opener.open(request)
-            logger.info('Submit successful!')
             return True
         except:
             logger.info('Submit method error.')
@@ -89,9 +100,9 @@ class HDU:
 
     def result(self):
         data = {
-                'first':'',
-                'pid':'',
-                'user':self.user_id,
+                'first': '',
+                'pid': '',
+                'user': self.user_id,
                 }
         if self.run_id:
             data['first'] = self.run_id
@@ -99,68 +110,101 @@ class HDU:
             data['pid'] = self.problem_id
 
         url = HDU.URL_STATUS + urllib.urlencode(data)
-        print url
-        request = urllib2.Request(url, '', HDU.headers)
-        page = self.opener.open(request, timeout=5)
 
-        soup = BeautifulSoup(page, 'html5lib')
-        table = soup.find('table', {'class': 'table_text'})
-        table_body = table.find('tbody')
+        try:
+            request = urllib2.Request(url, '', HDU.headers)
+            page = self.opener.open(request, timeout=5)
 
-        rows = table_body.find_all('tr')
+            soup = BeautifulSoup(page, 'html5lib')
+            table = soup.find('table', {'class': 'table_text'})
+            table_body = table.find('tbody')
 
-        data = []
-        for row in rows:
-            cols = row.find_all('td')
-            cols = [ele.text.strip() for ele in cols]
-            data.append([ele for ele in cols if ele])  # Get rid of empty values
+            rows = table_body.find_all('tr')
 
-        if len(data) <= 1:
-            logger.warning('get result error!')
+            data = []
+            for row in rows:
+                cols = row.find_all('td')
+                cols = [ele.text.strip() for ele in cols]
+                data.append([ele for ele in cols])  # No need:Get rid of empty values
+
+            if len(data) <= 1:
+                logger.warning('get result error!')
+                return False, {}
+
+            name = data[0]
+            latest = data[1]
+
+            if not self.run_id:
+                self.run_id = latest[0]
+
+            wait = ['Queuing', 'Compiling', 'Running']
+
+            res = {}
+            for i in range(9):
+                res[HDU.MAP[name[i]]] = latest[i]
+
+            for i in range(3):
+                if res['status'] == wait[i]:
+                    return False, res
+
+            return True, res
+
+        except Exception as e:
+            logger.error(e)
             return False, {}
 
-        name = data[0]
-        latest = data[1]
 
-        if not self.run_id:
-            self.run_id = latest[0]
+def hdu_submit(problem_id, language_name, src_code, username='USTBVJ', password='USTBVJ'):
+    """
+    :param problem_id: hdu problem id
+    :type problem_id: string
+    :param language_name: code language name, declare in HDU.LANGUAGE
+    :type language_name: string
+    :param src_code: source code of submission
+    :type src_code: string
+    :param username: submit user name, default using 'USTBVJ'
+    :type username: string
+    :param password: submit user password, default using 'USTBVJ'
+    :type password: string
+    :return: compatible result, if error occur, return empty dict
+    :rtype: dict
+    """
+    logger.info('HDU virtual judge start.')
+    hdu = HDU(username, password)
+    if hdu.login():
+        logger.info('[{user}] login success.'.format(user=username))
 
-        wait = ['Queuing', 'Compiling', 'Running']
-        for i in range(3):
-            if latest[2] == wait[i]:
-                return False, latest
+        if hdu.submit(problem_id, language_name, src_code):
+            logger.info('[{pid},{lang}] submit success.'.format(pid=problem_id, lang=language_name))
 
-        res = {}
-        for i in range(9):
-            res[name[i]]=latest[i]
-        return True, res
-
-
+            status, result = hdu.result()
+            while not status:
+                status, result = hdu.result()
+                if result:
+                    logger.info('status:{status}.'.format(status=result['status']))
+                time.sleep(1)
+            logger.info(result)
+            logger.info('HDU virtual judge end.')
+            return result
+        else:
+            logger.error('[{pid},{lang}] submit error.'.format(pid=problem_id, lang=language_name))
+            return {}
+    else:
+        logger.error('[{user}] login failed.'.format(user=username))
+        return {}
 
 
 if __name__ == '__main__':
-    user_id = 'USTBVJ'
-    pwd = 'USTBVJ'
     pid = 1000
     lang = 'g++'
     src = '''
-    #include<stdio.h>
+    #include<bits/stdc++.h>
+    using namespace std;
     int main()
     {
         int a,b;
-        while(cin>>a>>b)cout<<a+b<<endl;
+        while(cin>>a>>b)cout<<a-b<<endl;
         return 0;
     }
-
     '''
-    HDU = HDU(user_id, pwd)
-    HDU.login()
-    if HDU.submit(pid, lang, src):
-        status, result = HDU.result()
-        import time
-        result = {}
-        while not status:  # 每隔1s检测一次结果
-            status, result = HDU.result()
-            time.sleep(1)
-        print result
-        print 'done!'
+    hdu_submit(pid,lang,src)

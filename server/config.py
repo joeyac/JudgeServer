@@ -13,6 +13,9 @@ DEBUG_API = 3
 # binary X|X|X|X
 # runner|compiler|judger|api
 
+REMOTE_DEBUG = True
+# show the crawler and submitter info
+
 BASE_PATH = os.getcwd()
 
 TOKEN_FILE_PATH = os.path.join(BASE_PATH, "token.txt")

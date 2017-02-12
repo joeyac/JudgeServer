@@ -1,5 +1,6 @@
 # coding=utf-8
-from __future__ import unicode_literals
+from __future__ import unicode_literals, with_statement
+from config import REMOTE_DEBUG
 import psutil
 import socket
 import logging
@@ -7,6 +8,8 @@ import os
 import commands
 import hashlib
 import shutil
+import signal
+from contextlib import contextmanager
 
 from config import TOKEN_FILE_PATH, JUDGE_DEFAULT_PATH, DEBUG
 from exception import SandboxError,JudgeServerError
@@ -14,10 +17,42 @@ from exception import SandboxError,JudgeServerError
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s [%(threadName)s:%(thread)d] [%(name)s:%(lineno)d]'
                            ' [%(module)s:%(funcName)s] [%(levelname)s]- %(message)s',
-                    filename='/log/judge.log')
+                    datefmt='%m-%d %H:%M',
+                    filename='/log/judge.log',
+                    filemode='w')
+
+
+if REMOTE_DEBUG:
+    # define a Handler which writes INFO messages or higher to the sys.stderr
+    console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
+    # set a format which is simpler for console use
+    formatter = logging.Formatter('%(name)s: %(asctime)s [%(module)s:%(funcName)s] [%(levelname)s]- %(message)s')
+    # tell the handler to use this format
+    console.setFormatter(formatter)
+    # add the handler to the root logger
+    logging.getLogger('').addHandler(console)
+
+    # Now, we can log to the root logger, or any other logger. First the root...
 
 logger = logging
 
+
+# http://stackoverflow.com/questions/366682/how-to-limit-execution-time-of-a-function-call-in-python
+class TimeoutException(Exception):
+    pass
+
+
+@contextmanager
+def time_limit(seconds):
+    def signal_handler(signum, frame):
+        raise TimeoutException, "Timed out!"
+    signal.signal(signal.SIGALRM, signal_handler)
+    signal.alarm(seconds)
+    try:
+        yield
+    finally:
+        signal.alarm(0)
 
 def server_info():
     cmd = 'isolate --version'
