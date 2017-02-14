@@ -8,8 +8,9 @@ import hashlib
 from multiprocessing import Pool
 
 from config import TEST_CASE_DIR, JUDGE_DEFAULT_PATH, TEST_CASE_IN_DIR_NAME
-from utils import replace_blank
+from utils import replace_blank, logger
 from _runner import Runner
+
 from result import RESULT
 from config import DEBUG, DEBUG_JUDGER
 
@@ -187,7 +188,7 @@ class Judger(object):
         results = []
         for case_id, info in self.test_case_info.iteritems():
             if DEBUG >> DEBUG_JUDGER & 1:
-                print 'run the '+ str(case_id) + ' test case...'
+                logger.info('run the '+ str(case_id) + ' test case...')
             tmp_results.append(self.pool.apply_async(_run, (self, info)))
         self.pool.close()
         self.pool.join()

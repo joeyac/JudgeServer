@@ -147,4 +147,14 @@ class InitIsolateEnv(object):
             logger.exception(e)
             raise JudgeServerError("failed to clean runtime dir")
 
+def getHashOfDir(directory, verbose=0):
+    import checksumdir
+    if os.path.exists(directory):
+        return checksumdir.dirhash(directory, 'sha256')
+    else:
+        return -1
+
 token = hashlib.sha256(get_token()).hexdigest()
+
+if __name__ == '__main__':
+    print getHashOfDir(os.path.join(os.getcwd(), 'test_case', 'c'), 1)

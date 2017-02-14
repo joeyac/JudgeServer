@@ -1,3 +1,4 @@
+checksumdir
 flask
 flask-restful
 flask-httpauth

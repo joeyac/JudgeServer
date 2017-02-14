@@ -60,15 +60,16 @@ class POJ:
         # 此处的open方法同urllib2的urlopen方法，也可以传入request
 
     def login(self):
-        data = dict(
-            user_id1=self.user_id,
-            password1=self.password,
-            B1='login',
-            url='.',
-        )
-        post_data = urllib.urlencode(data)
-        request = urllib2.Request(POJ.URL_LOGIN, post_data, POJ.headers)
         try:
+            data = dict(
+                user_id1=self.user_id,
+                password1=self.password,
+                B1='login',
+                url='.',
+            )
+            post_data = urllib.urlencode(data)
+            request = urllib2.Request(POJ.URL_LOGIN, post_data, POJ.headers)
+
             response = self.opener.open(request, timeout=5).read()
             if response.find('loginlog') > 0:
                 return True
@@ -80,18 +81,19 @@ class POJ:
             return False
 
     def submit(self, problem_id, language, src_code):
-        self.problem_id = problem_id
-        submit_data = dict(
-            problem_id=problem_id,
-            language=POJ.LANGUAGE[language.upper()],
-            source=src_code,
-            submit='Submit',
-            encoded='0',
-        )
-        self.problem_id = problem_id
-        post_data = urllib.urlencode(submit_data)
-        request = urllib2.Request(POJ.URL_SUBMIT, post_data, POJ.headers)
         try:
+            self.problem_id = problem_id
+            submit_data = dict(
+                problem_id=problem_id,
+                language=POJ.LANGUAGE[language.upper()],
+                source=src_code,
+                submit='Submit',
+                encoded='0',
+            )
+            self.problem_id = problem_id
+            post_data = urllib.urlencode(submit_data)
+            request = urllib2.Request(POJ.URL_SUBMIT, post_data, POJ.headers)
+
             page = self.opener.open(request, timeout=5)
             html = page.read()
             if 'Error Occurred' in html:
@@ -102,65 +104,59 @@ class POJ:
             return False
 
     def result(self):
-        url_data = {
-            'user_id': self.user_id,
-            'problem_id': self.problem_id
-        }
-        url = POJ.URL_STATUS + urllib.urlencode(url_data)
-        page = self.opener.open(url, timeout=5)
+        try:
+            url_data = {
+                'user_id': self.user_id,
+                'problem_id': self.problem_id
+            }
+            url = POJ.URL_STATUS + urllib.urlencode(url_data)
+            page = self.opener.open(url, timeout=5)
 
-        # sometimes you can not get the page
-        if not page:
+            # sometimes you can not get the page
+            if not page:
+                return False, {}
+
+            soup = BeautifulSoup(page, 'html5lib')
+            table = soup.find('table', {'class': 'a'})
+
+            if not table:
+                return False, {}
+
+            table_body = table.find('tbody')
+
+            rows = table_body.find_all('tr')
+            data = []
+            for row in rows:
+                cols = row.find_all('td')
+                cols = [ele.text.strip() for ele in cols]
+                data.append([ele for ele in cols])  # ! Get rid of empty values
+
+            if len(data) <= 1:
+                logger.warning('get result error!')
+                return False, {}
+
+            name = data[0]
+            latest = data[1]
+
+            if not self.run_id:
+                self.run_id = latest[0]
+
+            wait = ['Running & Judging','Compiling','Waiting']
+            res = {}
+            for i in range(9):
+                res[POJ.MAP[name[i]]] = latest[i]
+
+            for i in range(3):
+                if res['status'] == wait[i]:
+                    return False, res
+
+            return True, res
+        except Exception as e:
+            logger.error(e)
             return False, {}
-
-        soup = BeautifulSoup(page, 'html5lib')
-        table = soup.find('table', {'class': 'a'})
-        table_body = table.find('tbody')
-
-        rows = table_body.find_all('tr')
-        data = []
-        for row in rows:
-            cols = row.find_all('td')
-            cols = [ele.text.strip() for ele in cols]
-            data.append([ele for ele in cols])  # ! Get rid of empty values
-
-        if len(data) <= 1:
-            logger.warning('get result error!')
-            return False, {}
-
-        name = data[0]
-        latest = data[1]
-
-        if not self.run_id:
-            self.run_id = latest[0]
-
-        wait = ['Running & Judging','Compiling','Waiting']
-        res = {}
-        for i in range(9):
-            res[POJ.MAP[name[i]]] = latest[i]
-
-        for i in range(3):
-            if res['status'] == wait[i]:
-                return False, res
-
-        return True, res
 
 
 def poj_submit(problem_id, language_name, src_code, username='USTBVJ', password='USTBVJ'):
-    """
-    :param problem_id: poj problem id
-    :type problem_id: string
-    :param language_name: code language name, declare in POJ.LANGUAGE
-    :type language_name: string
-    :param src_code: source code of submission
-    :type src_code: string
-    :param username: submit user name, default using 'USTBVJ'
-    :type username: string
-    :param password: submit user password, default using 'USTBVJ'
-    :type password: string
-    :return: compatible result, if error occur, return empty dict
-    :rtype: dict
-    """
     logger.info('POJ virtual judge start.')
     poj = POJ(username, password)
     if poj.login():

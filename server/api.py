@@ -12,15 +12,20 @@
 from flask import Flask, jsonify, make_response
 from flask_restful import Api, Resource, reqparse
 from werkzeug.datastructures import FileStorage
-from utils import token as base_token, server_info, InitIsolateEnv, logger
+from utils import token as base_token, \
+    server_info, InitIsolateEnv, logger, getHashOfDir
 from flask_httpauth import HTTPTokenAuth
 from language import languages
 from result import RESULT
+from oj_ import OJ
 from config import BASE_PATH, JUDGE_DEFAULT_PATH  # '/var/local/lib/isolate/'
 from compiler import Compiler
 from judger import Judger
 from exception import JudgeServerError, CompileError, SandboxError
 from zipfile import ZipFile
+from oj_poj import poj_submit
+from oj_hdu import hdu_submit
+from oj_cf import cf_submit
 import socket
 import shutil
 import os
@@ -64,14 +69,33 @@ class PingAPI(Resource):
         return {'info': languages[args['language_code']]}
 
 
-# def run(self,submission_id, language_code, code, time_limit, memory_limit, test_case_id,)
+# def run(self, submission_id, language_code, code, time_limit, memory_limit, test_case_id,)
 class JudgeAPI(Resource):
     decorators = [auth.login_required]
-
+    """
+    :param submission_id: for async update judge status
+    :type submission_id: string
+    :param language_code: language code, declare in language.py, range[1,5]
+    :type language_code: int
+    :param code: source code of submission
+    :type code: string
+    :param time_limit: time limit of the problem
+    :type time_limit: int
+    :param memory_limit: memory limit of the problem
+    :type memory_limit: int
+    :param test_case_id: test_case_id
+    :type test_case_id: string
+    :return: {'code':code, 'result':result}
+                code = 0 success
+                code = 1 catch error
+                code = 2 unknown error
+    :rtype: dict
+    """
     def __init__(self):
         self.reqparse = reqparse.RequestParser()
 
         self.reqparse.add_argument('language_code', type=int, required=True,
+                                   choices=languages.keys(),
                                    help='No language_code provided', location='json')
         self.reqparse.add_argument('code', type=str, required=True,
                                    help='No user code provided', location='json')
@@ -89,7 +113,8 @@ class JudgeAPI(Resource):
 
         self.reqparse.add_argument('spj_code', type=str, location='json')
 
-        self.reqparse.add_argument('submission_id', type=str, location='json')
+        self.reqparse.add_argument('submission_id', type=str, required=True,
+                                   help='No submission_id provided', location='json')
         super(JudgeAPI, self).__init__()
 
     def judge(self, args):
@@ -155,7 +180,7 @@ class JudgeAPI(Resource):
             ret = dict()
             ret["err"] = e.__class__.__name__
             ret["data"] = e.message
-            result = {"status": RESULT["compile_error"], "info": ret,}
+            result = {"status": RESULT["compile_error"], "info": ret, }
             return {'code': 0, 'result': result}
         except (JudgeServerError, SandboxError) as e:
             logger.exception(e)
@@ -169,6 +194,77 @@ class JudgeAPI(Resource):
             ret["err"] = "JudgeClientError"
             ret["data"] = e.__class__.__name__ + ":" + e.message
             return {'code': 2, 'result': ret}
+
+
+class VJudgeAPI(Resource):
+    decorators = [auth.login_required]
+    # problem_id, language_name, src_code
+
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser()
+
+        self.reqparse.add_argument('oj', type=int, choices=OJ.keys(), required=True, location='json')
+        self.reqparse.add_argument('problem_id', type=str, required=True, location='json')
+        self.reqparse.add_argument('language_name', type=str, required=True, location='json')
+        self.reqparse.add_argument('src_code', type=str, required=True, location='json')
+        self.reqparse.add_argument('submission_id', type=str, required=True,
+                                   help='No submission_id provided', location='json')
+        self.reqparse.add_argument('username', type=str, location='json')
+        self.reqparse.add_argument('password', type=str, location='json')
+        super(VJudgeAPI, self).__init__()
+
+    def vjudge(self, args):
+        oj = args['oj']
+        username = args['username']
+        pwd = args['password']
+        result = {}
+        if oj == 1: # poj
+            if username:
+                result = poj_submit(args['problem_id'], args['language_name'], args['src_code'],
+                                    username, pwd)
+            else:
+                result = poj_submit(args['problem_id'], args['language_name'], args['src_code'])
+        elif oj == 2: # hdu
+            if username:
+                result = hdu_submit(args['problem_id'], args['language_name'], args['src_code'],
+                                    username, pwd)
+            else:
+                result = hdu_submit(args['problem_id'], args['language_name'], args['src_code'])
+        elif oj == 3: # codeforces
+            if username:
+                result = cf_submit(args['problem_id'], args['language_name'], args['src_code'],
+                                   username, pwd)
+            else:
+                result = cf_submit(args['problem_id'], args['language_name'], args['src_code'])
+        return result
+
+    def post(self):
+        args = self.reqparse.parse_args()
+        print args
+        try:
+            result = self.vjudge(args)
+            return {'code': 0, 'result': result}
+        except Exception as e:
+            logger.exception(e)
+            ret = dict()
+            ret["err"] = "JudgeClientError"
+            ret["data"] = e.__class__.__name__ + ":" + e.message
+            return {'code': 2, 'result': ret}
+
+
+class TestCaseHashAPI(Resource):
+    decorators = [auth.login_required]
+
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser()
+        self.reqparse.add_argument('test_case_id', type=str, required=True)
+
+    def post(self):
+        args = self.reqparse.parse_args()
+        test_case_id = args['test_case_id']
+        path = os.path.join(BASE_PATH, 'test_case', test_case_id)
+        value = getHashOfDir(path)
+        return value
 
 
 class SyncAPI(Resource):
@@ -208,27 +304,9 @@ class SyncAPI(Resource):
 
 api.add_resource(PingAPI, '/ping/', endpoint='ping')
 api.add_resource(JudgeAPI, '/judge/', endpoint='judge')
+api.add_resource(VJudgeAPI, '/vjudge/', endpoint='vjudge')
+api.add_resource(TestCaseHashAPI, '/hash/', endpoint='hash')
 api.add_resource(SyncAPI, '/sync/', endpoint='sync')
-
-
-class Test1(Resource):
-    def get(self):
-        info = server_info()
-        print(info)
-        # return {'info': info}
-
-
-class Test2(Resource):
-    def get(self):
-        import time
-        time.sleep(10)
-        info = server_info()
-        print(info)
-        # return {'info': info}
-
-
-api.add_resource(Test1, '/test1/', endpoint='test1')
-api.add_resource(Test2, '/test2/', endpoint='test2')
 
 if __name__ == '__main__':
     app.run(debug=True)
