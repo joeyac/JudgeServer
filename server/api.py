@@ -1,19 +1,12 @@
 # coding=utf-8
 # sudo apt-get install python-flask
 # sudo apt-get install python-flask-restful
-# ===========   ===================================================             ==============
-# HTTP method   URL                                                             action
-# ===========   ===================================================             ==============
-# POST          http://[hostname]/api/                                          new judge_task
-# GET           http://[hostname]/api/                                          get server_status
-
-# GET           http://[hostname]/api/[submission_id]                           get judge_status
-# POST          http://[hostname]/api/[submission_id]                           update judge_task
 from flask import Flask, jsonify, make_response
 from flask_restful import Api, Resource, reqparse
 from werkzeug.datastructures import FileStorage
 from utils import token as base_token, \
     server_info, InitIsolateEnv, logger, getHashOfDir
+from config import DEBUG_API, DEBUG
 from flask_httpauth import HTTPTokenAuth
 from language import languages
 from result import RESULT
@@ -29,7 +22,6 @@ from oj_cf import cf_submit
 import socket
 import shutil
 import os
-
 
 app = Flask(__name__)
 api = Api(app)
@@ -53,6 +45,7 @@ class PingAPI(Resource):
     decorators = [auth.login_required]
 
     def __init__(self):
+        self.flag = 'powered by crazyX'
         self.reqparse = reqparse.RequestParser()
 
         self.reqparse.add_argument('language_code', type=int, required=True,
@@ -61,6 +54,7 @@ class PingAPI(Resource):
 
     def get(self):
         info = server_info()
+        info['more'] = self.flag
         return {'info': info}
 
     def post(self):
@@ -91,6 +85,7 @@ class JudgeAPI(Resource):
                 code = 2 unknown error
     :rtype: dict
     """
+
     def __init__(self):
         self.reqparse = reqparse.RequestParser()
 
@@ -117,7 +112,8 @@ class JudgeAPI(Resource):
                                    help='No submission_id provided', location='json')
         super(JudgeAPI, self).__init__()
 
-    def judge(self, args):
+    @staticmethod
+    def judge(args):
         with InitIsolateEnv() as box_id:
             compile_config = languages[args['language_code']]['compile']
             run_config = languages[args['language_code']]['run']
@@ -136,6 +132,7 @@ class JudgeAPI(Resource):
                 f.write(args['code'].encode("utf8"))
                 f.close()
             except Exception as e:
+                logger.exception(e)
                 raise JudgeServerError('unable write code to file')
             # write spj code into file
             if is_spj:
@@ -146,18 +143,19 @@ class JudgeAPI(Resource):
 
             # compile
             compiler = Compiler(compile_config=compile_config, box_id=box_id)
-            exe_name = compiler.compile()
+            compiler.compile()
             # compile spj code
             if is_spj:
                 spj_config = languages[1]['compile']
                 spj_config['src_name'] = 'spj.c'
                 spj_config['exe_name'] = 'spj'
                 spj_compiler = Compiler(compile_config=spj_config, box_id=box_id)
-                spj_name = spj_compiler.compile()
+                spj_compiler.compile()
 
             # run
-            judger = Judger(run_config=run_config,max_cpu_time=time_limit, max_memory=memory_limit,
-                            test_case_id=test_case_id, box_id=box_id, is_spj=is_spj)
+            judger = Judger(run_config=run_config, max_cpu_time=time_limit,
+                            max_memory=memory_limit, test_case_id=test_case_id,
+                            box_id=box_id, is_spj=is_spj)
             result = judger.run()
             judge_result = {"status": RESULT["accepted"], "info": result,
                             "accepted_answer_time": None, "server": host_name}
@@ -198,6 +196,7 @@ class JudgeAPI(Resource):
 
 class VJudgeAPI(Resource):
     decorators = [auth.login_required]
+
     # problem_id, language_name, src_code
 
     def __init__(self):
@@ -213,24 +212,25 @@ class VJudgeAPI(Resource):
         self.reqparse.add_argument('password', type=str, location='json')
         super(VJudgeAPI, self).__init__()
 
-    def vjudge(self, args):
+    @staticmethod
+    def virtual_judge(args):
         oj = args['oj']
         username = args['username']
         pwd = args['password']
         result = {}
-        if oj == 1: # poj
+        if 1 == oj:  # poj
             if username:
                 result = poj_submit(args['problem_id'], args['language_name'], args['src_code'],
                                     username, pwd)
             else:
                 result = poj_submit(args['problem_id'], args['language_name'], args['src_code'])
-        elif oj == 2: # hdu
+        elif 2 == oj:  # hdu
             if username:
                 result = hdu_submit(args['problem_id'], args['language_name'], args['src_code'],
                                     username, pwd)
             else:
                 result = hdu_submit(args['problem_id'], args['language_name'], args['src_code'])
-        elif oj == 3: # codeforces
+        elif 3 == oj:  # codeforces
             if username:
                 result = cf_submit(args['problem_id'], args['language_name'], args['src_code'],
                                    username, pwd)
@@ -240,9 +240,8 @@ class VJudgeAPI(Resource):
 
     def post(self):
         args = self.reqparse.parse_args()
-        print args
         try:
-            result = self.vjudge(args)
+            result = self.virtual_judge(args)
             return {'code': 0, 'result': result}
         except Exception as e:
             logger.exception(e)
@@ -302,6 +301,7 @@ class SyncAPI(Resource):
         os.remove(path)
         return "Done!"
 
+
 api.add_resource(PingAPI, '/ping/', endpoint='ping')
 api.add_resource(JudgeAPI, '/judge/', endpoint='judge')
 api.add_resource(VJudgeAPI, '/vjudge/', endpoint='vjudge')
@@ -310,4 +310,3 @@ api.add_resource(SyncAPI, '/sync/', endpoint='sync')
 
 if __name__ == '__main__':
     app.run(debug=True)
-

@@ -53,8 +53,8 @@ class Judger(object):
         user_output_file_path = os.path.join(self.out_put_dir, out_file_name)
 
         stand_output_file_path = os.path.join(self.test_case_dir, out_file_name)
-        strip_output_file_path = os.path.join(self.test_case_dir,  out_file_name + '.strip')
-        end_strip_output_file_path = os.path.join(self.test_case_dir,  out_file_name + '.end.strip')
+        strip_output_file_path = os.path.join(self.test_case_dir, out_file_name + '.strip')
+        end_strip_output_file_path = os.path.join(self.test_case_dir, out_file_name + '.end.strip')
 
         # check if the same without space,tab,and enter
         if os.path.exists(strip_output_file_path):
@@ -112,10 +112,10 @@ class Judger(object):
         judge_error = 'judger.error'
 
         judger = Runner(max_cpu_time=self.max_cpu_time,
-                        max_real_time=self.max_cpu_time*2,
+                        max_real_time=self.max_cpu_time * 2,
                         max_memory=self.max_memory,
                         box_id=self.box_id,
-                        max_output_size=max_output_size if max_output_size else 1024*1024,  # 1G 输出文件最大不可能超过1G 否则输出OLE
+                        max_output_size=max_output_size if max_output_size else 1024 * 1024,  # 1G 输出文件最大不可能超过1G 否则输出OLE
                         max_process_number=-1,
                         input_file=input_file,
                         output_file=user_out_file_name,
@@ -140,7 +140,7 @@ class Judger(object):
                                          user_out=user_out_file_name)
 
                 spj = Runner(max_cpu_time=self.max_cpu_time,
-                             max_real_time=self.max_cpu_time*2,
+                             max_real_time=self.max_cpu_time * 2,
                              max_memory=self.max_memory,
                              box_id=self.box_id,
                              max_output_size=1024,
@@ -151,11 +151,11 @@ class Judger(object):
                              meta_file='spj.meta',
                              run_args=spj_cmd,
                              input_file_dir=os.path.join(TEST_CASE_DIR, self.test_case_id)
-                        )
+                             )
                 spj.run()
                 spj_result = spj.result
                 status = spj_result['info']['exitcode']
-                if  status == 0:
+                if status == 0:
                     run_result['status'] = RESULT['accepted']
                 elif status == 1:
                     run_result['status'] = RESULT['wrong_answer']
@@ -188,7 +188,7 @@ class Judger(object):
         results = []
         for case_id, info in self.test_case_info.iteritems():
             if DEBUG >> DEBUG_JUDGER & 1:
-                logger.info('run the '+ str(case_id) + ' test case...')
+                logger.info('run the ' + str(case_id) + ' test case...')
             tmp_results.append(self.pool.apply_async(_run, (self, info)))
         self.pool.close()
         self.pool.join()
