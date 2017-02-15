@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from utils import logger
+from utils import logger, updateSubmission
+from exception import VLoginFailed, VSubmitFailed
 from bs4 import BeautifulSoup
 import html5lib
 import urllib, urllib2, cookielib
@@ -154,44 +155,25 @@ class HDU:
             return False, {}
 
 
-def hdu_submit(problem_id, language_name, src_code, username='USTBVJ', password='USTBVJ'):
-    """
-    :param problem_id: hdu problem id
-    :type problem_id: string
-    :param language_name: code language name, declare in HDU.LANGUAGE
-    :type language_name: string
-    :param src_code: source code of submission
-    :type src_code: string
-    :param username: submit user name, default using 'USTBVJ'
-    :type username: string
-    :param password: submit user password, default using 'USTBVJ'
-    :type password: string
-    :return: compatible result, if error occur, return empty dict
-    :rtype: dict
-    """
-    logger.info('HDU virtual judge start.')
+def hdu_submit(problem_id, language_name, src_code, ip, sid, username='USTBVJ', password='USTBVJ'):
     hdu = HDU(username, password)
     if hdu.login():
-        logger.info('[{user}] login success.'.format(user=username))
-
         if hdu.submit(problem_id, language_name, src_code):
-            logger.info('[{pid},{lang}] submit success.'.format(pid=problem_id, lang=language_name))
-
             status, result = hdu.result()
             while not status:
                 status, result = hdu.result()
                 if result:
-                    logger.info('status:{status}.'.format(status=result['status']))
-                time.sleep(1)
-            logger.info(result)
-            logger.info('HDU virtual judge end.')
+                    updateSubmission(ip, sid, result['status'])
+                time.sleep(2)
             return result
         else:
-            logger.error('[{pid},{lang}] submit error.'.format(pid=problem_id, lang=language_name))
-            return {}
+            info = 'HDU [{pid},{lang},{sid}] submit error.'.format(pid=problem_id, lang=language_name, sid=sid)
+            logger.exception(info)
+            raise VSubmitFailed(info)
     else:
-        logger.error('[{user}] login failed.'.format(user=username))
-        return {}
+        info = 'HDU [{user},{sid}] login failed.'.format(user=username, sid=sid)
+        logger.exception(info)
+        raise VLoginFailed(info)
 
 
 if __name__ == '__main__':

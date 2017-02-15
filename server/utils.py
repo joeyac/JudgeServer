@@ -4,6 +4,7 @@ from config import REMOTE_DEBUG
 import psutil
 import socket
 import logging
+from logging.handlers import RotatingFileHandler
 import os
 import commands
 import hashlib
@@ -14,13 +15,19 @@ from contextlib import contextmanager
 from config import TOKEN_FILE_PATH, JUDGE_DEFAULT_PATH, DEBUG
 from exception import SandboxError,JudgeServerError
 
+logFile='/log/judge.log'
+my_handler = RotatingFileHandler(logFile, mode='a', maxBytes=5*1024*1024,
+                                 backupCount=2, encoding=None, delay=0)
+
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s [%(threadName)s:%(thread)d] [%(name)s:%(lineno)d]'
                            ' [%(module)s:%(funcName)s] [%(levelname)s]- %(message)s',
                     datefmt='%m-%d %H:%M',
                     filename='/log/judge.log',
-                    filemode='w')
+                    filemode='w',
+                    )
 
+logging.getLogger('').addHandler(my_handler)
 
 if REMOTE_DEBUG:
     # define a Handler which writes INFO messages or higher to the sys.stderr
@@ -147,14 +154,22 @@ class InitIsolateEnv(object):
             logger.exception(e)
             raise JudgeServerError("failed to clean runtime dir")
 
-def getHashOfDir(directory, verbose=0):
+
+def getHashOfDir(directory):
     import checksumdir
     if os.path.exists(directory):
         return checksumdir.dirhash(directory, 'sha256')
     else:
         return -1
 
+
 token = hashlib.sha256(get_token()).hexdigest()
 
+
+def updateSubmission(remote_addr, sid, status):
+    print remote_addr, sid, status, token
+
 if __name__ == '__main__':
-    print getHashOfDir(os.path.join(os.getcwd(), 'test_case', 'c'), 1)
+    while True:
+        logger.info('data')
+    # print getHashOfDir(os.path.join(os.getcwd(), 'test_case', 'c'), 1)

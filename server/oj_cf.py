@@ -1,8 +1,9 @@
-from utils import logger
+from utils import logger, updateSubmission
 from robobrowser import RoboBrowser
 from bs4 import BeautifulSoup
 from urllib2 import urlopen
 import time
+from exception import VLoginFailed, VSubmitFailed
 import html5lib
 
 class CF:
@@ -117,50 +118,32 @@ class CF:
         res['vid'] = str(res['problem']).split(' - ')[0]
 
         for i in range(2):
-            if res['status'] == wait[i]:
+            if wait[i] in res['status']:
                 return False, res
 
         return True, res
 
 
-def cf_submit(problem_id, language_name, src_code, username='ineedAC', password='x970307jw'):
-    """
-    :param problem_id: codeforces problem id, consist of contest id and problem char,like 367D
-    :type problem_id: string
-    :param language_name: code language name, declare in CF.LANGUAGE
-    :type language_name: string
-    :param src_code: source code of submission
-    :type src_code: string
-    :param username: submit user name, default using 'ineedAC'
-    :type username: string
-    :param password: submit user password, default using 'x970307jw'
-    :type password: string
-    :return: compatible result, if error occur, return empty dict
-    :rtype: dict
-    """
-    logger.info('Codeforces virtual judge start.')
+def cf_submit(problem_id, language_name, src_code, ip, sid, username='ineedAC', password='x970307jw'):
     cf = CF(username, password)
     if cf.login():
-        logger.info('[{user}] login success.'.format(user=username))
 
         if cf.submit(problem_id, language_name, src_code):
-            logger.info('[{pid},{lang}] submit success.'.format(pid=problem_id, lang=language_name))
-
             status, result = cf.result()
             while not status:
                 status, result = cf.result()
                 if result:
-                    logger.info('status:{status}.'.format(status=result['status']))
-                time.sleep(1)
-            logger.info(result)
-            logger.info('Codeforces virtual judge end.')
+                    updateSubmission(ip, sid, result['status'])
+                time.sleep(2)
             return result
         else:
-            logger.error('[{pid},{lang}] submit error.'.format(pid=problem_id, lang=language_name))
-            return {}
+            info = 'Codeforces [{pid},{lang},{sid}] submit error.'.format(pid=problem_id, lang=language_name, sid=sid)
+            logger.exception(info)
+            raise VSubmitFailed(info)
     else:
-        logger.error('[{user}] login failed.'.format(user=username))
-        return {}
+        info = 'Codeforces [{user},{sid}] login failed.'.format(user=username, sid=sid)
+        logger.exception(info)
+        raise VLoginFailed(info)
 
 
 if __name__ == '__main__':

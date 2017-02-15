@@ -69,6 +69,8 @@ csw-forced:7
 status:SG
 message:Caught fatal signal 11
 
+install docker
+sudo curl -sSL https://get.docker.com | bash
 
 docker 构建流程
 1.构建Dockerfile
@@ -79,6 +81,12 @@ docker 构建流程
     docker inspect --format='{{json .NetworkSettings.Networks}}' d82816b60724
 4.进入容器查看log
     docker exec -i -t 22c8102566a8 /bin/bash
+
+#!/bin/bash
+# Delete all containers
+docker rm $(docker ps -a -q)
+# Delete all images
+docker rmi $(docker images -q)
 
 
 git can not pull :

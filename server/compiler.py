@@ -6,7 +6,7 @@ sys.setdefaultencoding('utf-8')
 
 
 import os
-from config import JUDGE_DEFAULT_PATH ,DEBUG_COMPILER, DEBUG
+from config import JUDGE_DEFAULT_PATH
 from exception import SandboxError, CompileError
 from _runner import Runner
 
@@ -29,7 +29,7 @@ class Compiler(object):
 
     def compile(self):
         if not verify(self.box_id):
-            raise SandboxError('sandbox id should in range 0~99 ')
+            raise SandboxError('sandbox id should in range 0~99.')
 
         # except meta file other are all relative path
         output_dir = os.path.join(JUDGE_DEFAULT_PATH, self.box_id, 'box')
@@ -57,7 +57,5 @@ class Compiler(object):
         if compiler.result['status'] == Runner.RESULT['success']:
             return self.compile_config['exe_name']
         else:
-            if DEBUG >> DEBUG_COMPILER & 1:
-                print compiler.result
-                info = compiler.result['info']
-                raise CompileError("info: %s" % str(info))
+            info = compiler.result['info']
+            raise CompileError("info: %s" % str(info))

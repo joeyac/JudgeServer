@@ -1,12 +1,11 @@
 # coding=utf-8
 # sudo apt-get install python-flask
 # sudo apt-get install python-flask-restful
-from flask import Flask, jsonify, make_response
+from flask import Flask, jsonify, make_response, request
 from flask_restful import Api, Resource, reqparse
 from werkzeug.datastructures import FileStorage
 from utils import token as base_token, \
     server_info, InitIsolateEnv, logger, getHashOfDir
-from config import DEBUG_API, DEBUG
 from flask_httpauth import HTTPTokenAuth
 from language import languages
 from result import RESULT
@@ -14,7 +13,8 @@ from oj_ import OJ
 from config import BASE_PATH, JUDGE_DEFAULT_PATH  # '/var/local/lib/isolate/'
 from compiler import Compiler
 from judger import Judger
-from exception import JudgeServerError, CompileError, SandboxError
+from exception import JudgeServerError, CompileError, SandboxError, \
+    VSubmitFailed, VLoginFailed
 from zipfile import ZipFile
 from oj_poj import poj_submit
 from oj_hdu import hdu_submit
@@ -42,81 +42,59 @@ def unauthorized():
 
 
 class PingAPI(Resource):
-    decorators = [auth.login_required]
+    # decorators = [auth.login_required]
 
     def __init__(self):
-        self.flag = 'powered by crazyX'
+        self.flag = 'powered by crazyX for LETTers'
         self.reqparse = reqparse.RequestParser()
 
-        self.reqparse.add_argument('language_code', type=int, required=True,
-                                   help='No language_code provided', location='json')
+        self.reqparse.add_argument('language_name', type=str, required=True,
+                                   help='No language name provided', location='json')
         self.reqparse.add_argument('data', type=dict, location='json')
 
     def get(self):
         info = server_info()
+        ip = request.remote_addr
         info['more'] = self.flag
+        info['ip'] = ip
         return {'info': info}
 
     def post(self):
         args = self.reqparse.parse_args()
-        print args['language_code']
-        return {'info': languages[args['language_code']]}
+        print args['language_name']
+        return {'info': languages[args['language_name']]}
 
 
 # def run(self, submission_id, language_code, code, time_limit, memory_limit, test_case_id,)
 class JudgeAPI(Resource):
     decorators = [auth.login_required]
-    """
-    :param submission_id: for async update judge status
-    :type submission_id: string
-    :param language_code: language code, declare in language.py, range[1,5]
-    :type language_code: int
-    :param code: source code of submission
-    :type code: string
-    :param time_limit: time limit of the problem
-    :type time_limit: int
-    :param memory_limit: memory limit of the problem
-    :type memory_limit: int
-    :param test_case_id: test_case_id
-    :type test_case_id: string
-    :return: {'code':code, 'result':result}
-                code = 0 success
-                code = 1 catch error
-                code = 2 unknown error
-    :rtype: dict
-    """
 
     def __init__(self):
         self.reqparse = reqparse.RequestParser()
 
-        self.reqparse.add_argument('language_code', type=int, required=True,
+        self.reqparse.add_argument('language_name', type=str, required=True,
                                    choices=languages.keys(),
-                                   help='No language_code provided', location='json')
-        self.reqparse.add_argument('code', type=str, required=True,
-                                   help='No user code provided', location='json')
+                                   help='Only support c,c++,java,python2,python3', location='json')
 
-        #  ms
-        self.reqparse.add_argument('time_limit', type=int, required=True,
-                                   help='No time_limit provided', location='json')
-
+        self.reqparse.add_argument('src_code', type=str, required=True, location='json')
+        # ms
+        self.reqparse.add_argument('time_limit', type=int, required=True, location='json')
         # kb
-        self.reqparse.add_argument('memory_limit', type=int, required=True,
-                                   help='No memory_limit provided', location='json')
+        self.reqparse.add_argument('memory_limit', type=int, required=True, location='json')
 
-        self.reqparse.add_argument('test_case_id', type=str, required=True,
-                                   help='No test_case_id provided', location='json')
+        self.reqparse.add_argument('test_case_id', type=str, required=True, location='json')
+
+        self.reqparse.add_argument('submission_id', type=str, required=True, location='json')
 
         self.reqparse.add_argument('spj_code', type=str, location='json')
 
-        self.reqparse.add_argument('submission_id', type=str, required=True,
-                                   help='No submission_id provided', location='json')
         super(JudgeAPI, self).__init__()
 
     @staticmethod
     def judge(args):
         with InitIsolateEnv() as box_id:
-            compile_config = languages[args['language_code']]['compile']
-            run_config = languages[args['language_code']]['run']
+            compile_config = languages[args['language_name']]['compile']
+            run_config = languages[args['language_name']]['run']
             src_name = compile_config['src_name']
             time_limit = args['time_limit'] / 1000.0
             memory_limit = args['memory_limit']
@@ -146,7 +124,7 @@ class JudgeAPI(Resource):
             compiler.compile()
             # compile spj code
             if is_spj:
-                spj_config = languages[1]['compile']
+                spj_config = languages['c++']['compile']
                 spj_config['src_name'] = 'spj.c'
                 spj_config['exe_name'] = 'spj'
                 spj_compiler = Compiler(compile_config=spj_config, box_id=box_id)
@@ -221,28 +199,39 @@ class VJudgeAPI(Resource):
         if 1 == oj:  # poj
             if username:
                 result = poj_submit(args['problem_id'], args['language_name'], args['src_code'],
-                                    username, pwd)
+                                    args['ip'], args['submission_id'], username, pwd)
             else:
-                result = poj_submit(args['problem_id'], args['language_name'], args['src_code'])
+                result = poj_submit(args['problem_id'], args['language_name'], args['src_code'],
+                                    args['ip'], args['submission_id'],)
         elif 2 == oj:  # hdu
             if username:
                 result = hdu_submit(args['problem_id'], args['language_name'], args['src_code'],
-                                    username, pwd)
+                                    args['ip'], args['submission_id'], username, pwd)
             else:
-                result = hdu_submit(args['problem_id'], args['language_name'], args['src_code'])
+                result = hdu_submit(args['problem_id'], args['language_name'], args['src_code'],
+                                    args['ip'], args['submission_id'],)
         elif 3 == oj:  # codeforces
             if username:
                 result = cf_submit(args['problem_id'], args['language_name'], args['src_code'],
-                                   username, pwd)
+                                   args['ip'], args['submission_id'], username, pwd)
             else:
-                result = cf_submit(args['problem_id'], args['language_name'], args['src_code'])
+                result = cf_submit(args['problem_id'], args['language_name'], args['src_code'],
+                                   args['ip'], args['submission_id'],)
         return result
 
     def post(self):
         args = self.reqparse.parse_args()
+        ip = request.remote_addr
+        args['ip'] = ip
         try:
             result = self.virtual_judge(args)
             return {'code': 0, 'result': result}
+        except (VLoginFailed, VSubmitFailed) as e:
+            logger.exception(e)
+            ret = dict()
+            ret["err"] = e.__class__.__name__
+            ret["data"] = e.message
+            return {'code': 1, 'result': ret}
         except Exception as e:
             logger.exception(e)
             ret = dict()
@@ -309,4 +298,4 @@ api.add_resource(TestCaseHashAPI, '/hash/', endpoint='hash')
 api.add_resource(SyncAPI, '/sync/', endpoint='sync')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0')

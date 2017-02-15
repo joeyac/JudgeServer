@@ -11,3 +11,12 @@ class JudgeServerError(Exception):
 
 class SandboxError(Exception):
     pass
+
+
+class VLoginFailed(Exception):
+    pass
+
+
+class VSubmitFailed(Exception):
+    pass
+

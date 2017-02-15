@@ -1,7 +1,9 @@
 # coding=utf-8
 from __future__ import unicode_literals
+
+
 languages = {
-    1: {
+    'c': {
         'name': 'c',
         'compile': {
             "group_memory": True,
@@ -17,7 +19,7 @@ languages = {
             "command": "./{exe_name}",
         }
     },
-    2: {
+    'c++': {
         "name": "c++",
         "compile": {
             "group_memory": True,
@@ -33,7 +35,7 @@ languages = {
             "command": "{exe_name}",
         }
     },
-    3: {
+    'java': {
         "name": "java",
         "compile": {
             "group_memory": True,
@@ -50,7 +52,7 @@ languages = {
             "command": "/usr/lib/jvm/java-9-oracle/bin/java -cp {exe_name}  Main",
         }
     },
-    4: {
+    'python2': {
         "name": "python2",
         "compile": {
             "group_memory": True,
@@ -66,7 +68,7 @@ languages = {
             "command": "/usr/bin/python {exe_name}",
         }
     },
-    5: {
+    'python3': {
         "name": "python3",
         "compile": {
             "group_memory": True,

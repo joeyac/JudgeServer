@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from utils import logger
+from utils import logger, updateSubmission
+from exception import VSubmitFailed, VLoginFailed
 from bs4 import BeautifulSoup
 import html5lib
 import urllib, urllib2, cookielib
@@ -156,30 +157,25 @@ class POJ:
             return False, {}
 
 
-def poj_submit(problem_id, language_name, src_code, username='USTBVJ', password='USTBVJ'):
-    logger.info('POJ virtual judge start.')
+def poj_submit(problem_id, language_name, src_code, ip, sid, username='USTBVJ', password='USTBVJ'):
     poj = POJ(username, password)
     if poj.login():
-        logger.info('[{user}] login success.'.format(user=username))
-
         if poj.submit(problem_id, language_name, src_code):
-            logger.info('[{pid},{lang}] submit success.'.format(pid=problem_id, lang=language_name))
-
             status, result = poj.result()
             while not status:
                 status, result = poj.result()
                 if result:
-                    logger.info('status:{status}.'.format(status=result['status']))
-                time.sleep(1)
-            logger.info(result)
-            logger.info('POJ virtual judge end.')
+                    updateSubmission(ip, sid, result['status'])
+                time.sleep(2)
             return result
         else:
-            logger.error('[{pid},{lang}] submit error.'.format(pid=problem_id, lang=language_name))
-            return {}
+            info = 'POJ [{pid},{lang},{sid}] submit error.'.format(pid=problem_id, lang=language_name, sid=sid)
+            logger.exception(info)
+            raise VSubmitFailed(info)
     else:
-        logger.error('[{user}] login failed.'.format(user=username))
-        return {}
+        info = 'POJ [{user},{sid}] login failed.'.format(user=username, sid=sid)
+        logger.exception(info)
+        raise VLoginFailed(info)
 
 if __name__ == '__main__':
     pid = 1000
