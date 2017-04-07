@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from utils import logger, updateSubmission
+from utils import logger
+from update_status import update_submission_status
 from exception import VLoginFailed, VSubmitFailed
 from bs4 import BeautifulSoup
 import html5lib
@@ -99,6 +100,15 @@ class HDU:
             logger.info('Submit method error.')
             return False
 
+    @staticmethod
+    def str2int(string):
+        if not string:
+            return 0
+        try:
+            return int(string[:-1])
+        except:
+            return int(string[:-2])
+
     def result(self):
         data = {
                 'first': '',
@@ -138,11 +148,14 @@ class HDU:
             if not self.run_id:
                 self.run_id = latest[0]
 
-            wait = ['Queuing', 'Compiling', 'Running']
+            wait = ['queuing', 'compiling', 'running']
 
             res = {}
             for i in range(9):
-                res[HDU.MAP[name[i]]] = latest[i]
+                res[HDU.MAP[name[i]]] = str(latest[i]).lower()
+
+            res['time'] = self.str2int(res['time'])
+            res['memory'] = self.str2int(res['memory'])
 
             for i in range(3):
                 if res['status'] == wait[i]:
@@ -155,15 +168,15 @@ class HDU:
             return False, {}
 
 
-def hdu_submit(problem_id, language_name, src_code, ip, sid, username='USTBVJ', password='USTBVJ'):
+def hdu_submit(problem_id, language_name, src_code, ip=None, sid=None, username='USTBVJ', password='USTBVJ'):
     hdu = HDU(username, password)
     if hdu.login():
         if hdu.submit(problem_id, language_name, src_code):
             status, result = hdu.result()
             while not status:
                 status, result = hdu.result()
-                if result:
-                    updateSubmission(ip, sid, result['status'])
+                if result and ip:
+                    update_submission_status(ip, sid, result['status'])
                 time.sleep(2)
             return result
         else:
@@ -189,4 +202,4 @@ if __name__ == '__main__':
         return 0;
     }
     '''
-    hdu_submit(pid,lang,src)
+    print hdu_submit(pid,lang,src)

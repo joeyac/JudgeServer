@@ -13,7 +13,7 @@ DEBUG_API = 3
 # binary X|X|X|X
 # runner|compiler|judger|api
 
-REMOTE_DEBUG = False
+REMOTE_DEBUG = True
 # show the crawler and submitter info
 
 BASE_PATH = os.getcwd()

@@ -57,5 +57,6 @@ class Compiler(object):
         if compiler.result['status'] == Runner.RESULT['success']:
             return self.compile_config['exe_name']
         else:
-            info = compiler.result['info']
-            raise CompileError("info: %s" % str(info))
+            info = compiler.result['info']['error']
+            info = str(info).replace('"',"'")
+            raise CompileError(info)

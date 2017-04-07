@@ -10,22 +10,24 @@ from multiprocessing import Pool
 from config import TEST_CASE_DIR, JUDGE_DEFAULT_PATH, TEST_CASE_IN_DIR_NAME
 from utils import replace_blank, logger
 from _runner import Runner
+from update_status import update_submission_status
 
 from result import RESULT
 from config import DEBUG, DEBUG_JUDGER
 
 from exception import JudgeServerError
 
-
 # 下面这个函数作为代理访问实例变量，否则Python2会报错，是Python2的已知问题
 # http://stackoverflow.com/questions/1816958/cant-pickle-type-instancemethod-when-using-pythons-multiprocessing-pool-ma/7309686
+
+
 def _run(instance, test_file_info):
     return instance._judge_one(test_file_info)
 
 
 class Judger(object):
     def __init__(self, run_config, max_cpu_time, max_memory, test_case_id, box_id,
-                 is_spj=False):
+                 server_ip, submission_id, is_spj=False):
         self.run_config = run_config
         self.max_cpu_time = max_cpu_time
         self.max_memory = max_memory
@@ -33,12 +35,20 @@ class Judger(object):
         self.exe_name = run_config['exe_name']
         self.box_id = box_id
 
+        self.server_ip = server_ip
+        self.submission_id = submission_id
+
         self.test_case_dir = os.path.join(TEST_CASE_DIR, test_case_id)
         self.out_put_dir = os.path.join(JUDGE_DEFAULT_PATH, box_id, 'box')
         self.test_case_info = self._load_test_case_info()
         self.pool = Pool(processes=psutil.cpu_count())
 
         self.is_spj = is_spj
+
+        # make md5 dir
+        self.md5dir = os.path.join(TEST_CASE_DIR, 'md5', self.test_case_id)
+        if not os.path.exists(self.md5dir):
+            os.makedirs(self.md5dir)
 
     def _load_test_case_info(self):
         try:
@@ -53,8 +63,8 @@ class Judger(object):
         user_output_file_path = os.path.join(self.out_put_dir, out_file_name)
 
         stand_output_file_path = os.path.join(self.test_case_dir, out_file_name)
-        strip_output_file_path = os.path.join(self.test_case_dir, out_file_name + '.strip')
-        end_strip_output_file_path = os.path.join(self.test_case_dir, out_file_name + '.end.strip')
+        strip_output_file_path = os.path.join(self.md5dir, out_file_name + '.strip')
+        end_strip_output_file_path = os.path.join(self.md5dir, out_file_name + '.end.strip')
 
         # check if the same without space,tab,and enter
         if os.path.exists(strip_output_file_path):
@@ -186,10 +196,18 @@ class Judger(object):
         # 添加到任务队列
         tmp_results = []
         results = []
-        for case_id, info in self.test_case_info.iteritems():
+        cnt = len(self.test_case_info)
+        for case_id in range(cnt):
+            info = self.test_case_info[case_id]
             if DEBUG >> DEBUG_JUDGER & 1:
-                logger.info('run the ' + str(case_id) + ' test case...')
+                info_str = 'running on test case ' + str(case_id + 1) + '.'
+                logger.info(info_str)
+            update_submission_status(self.server_ip, self.submission_id, info_str)
             tmp_results.append(self.pool.apply_async(_run, (self, info)))
+        # for case_id, info in self.test_case_info.iteritems():
+        #     if DEBUG >> DEBUG_JUDGER & 1:
+        #         logger.info('run the ' + str(case_id) + ' test case...')
+        #     tmp_results.append(self.pool.apply_async(_run, (self, info)))
         self.pool.close()
         self.pool.join()
         for item in tmp_results:

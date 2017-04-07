@@ -5,20 +5,21 @@ from flask import Flask, jsonify, make_response, request
 from flask_restful import Api, Resource, reqparse
 from werkzeug.datastructures import FileStorage
 from utils import token as base_token, \
-    server_info, InitIsolateEnv, logger, getHashOfDir
+    server_info, InitIsolateEnv, logger, get_dir_hash
 from flask_httpauth import HTTPTokenAuth
 from language import languages
-from result import RESULT
+from result import RESULT, RE_RESULT
 from oj_ import OJ
 from config import BASE_PATH, JUDGE_DEFAULT_PATH  # '/var/local/lib/isolate/'
 from compiler import Compiler
 from judger import Judger
 from exception import JudgeServerError, CompileError, SandboxError, \
     VSubmitFailed, VLoginFailed
+from update_status import update_submission_status
 from zipfile import ZipFile
 from oj_poj import poj_submit
 from oj_hdu import hdu_submit
-from oj_cf import cf_submit
+from oj_cf import codeforces_submit
 import socket
 import shutil
 import os
@@ -46,23 +47,13 @@ class PingAPI(Resource):
 
     def __init__(self):
         self.flag = 'powered by crazyX for LETTers'
-        self.reqparse = reqparse.RequestParser()
-
-        self.reqparse.add_argument('language_name', type=str, required=True,
-                                   help='No language name provided', location='json')
-        self.reqparse.add_argument('data', type=dict, location='json')
 
     def get(self):
         info = server_info()
         ip = request.remote_addr
         info['more'] = self.flag
         info['ip'] = ip
-        return {'info': info}
-
-    def post(self):
-        args = self.reqparse.parse_args()
-        print args['language_name']
-        return {'info': languages[args['language_name']]}
+        return {'code': 0, 'data': info}
 
 
 # def run(self, submission_id, language_code, code, time_limit, memory_limit, test_case_id,)
@@ -84,30 +75,35 @@ class JudgeAPI(Resource):
 
         self.reqparse.add_argument('test_case_id', type=str, required=True, location='json')
 
-        self.reqparse.add_argument('submission_id', type=str, required=True, location='json')
+        self.reqparse.add_argument('submission_id', type=int, required=True, location='json')
 
         self.reqparse.add_argument('spj_code', type=str, location='json')
 
         super(JudgeAPI, self).__init__()
 
     @staticmethod
-    def judge(args):
+    def judge(args, ip):
         with InitIsolateEnv() as box_id:
             compile_config = languages[args['language_name']]['compile']
             run_config = languages[args['language_name']]['run']
             src_name = compile_config['src_name']
             time_limit = args['time_limit'] / 1000.0
-            memory_limit = args['memory_limit']
+            if args['language_name'] == 'java':
+                memory_limit = 512 * 1024
+            else:
+                memory_limit = args['memory_limit']
             test_case_id = args['test_case_id']
+            submission_id = args['submission_id']
+
             path = os.path.join(JUDGE_DEFAULT_PATH, str(box_id))
             host_name = socket.gethostname()
-            is_spj = True if 'spj_code' in args else False
+            is_spj = True if 'spj_code' in args and args['spj_code'] else False
 
             # write source code into file
             try:
                 src_path = os.path.join(path, 'box', src_name)
                 f = open(src_path, "w")
-                f.write(args['code'].encode("utf8"))
+                f.write(args['src_code'].encode("utf8"))
                 f.close()
             except Exception as e:
                 logger.exception(e)
@@ -118,6 +114,8 @@ class JudgeAPI(Resource):
                 f = open(spj_src_path, "w")
                 f.write(args['spj_code'].encode("utf8"))
                 f.close()
+
+            update_submission_status(ip, submission_id, 'compiling')
 
             # compile
             compiler = Compiler(compile_config=compile_config, box_id=box_id)
@@ -130,33 +128,51 @@ class JudgeAPI(Resource):
                 spj_compiler = Compiler(compile_config=spj_config, box_id=box_id)
                 spj_compiler.compile()
 
+            update_submission_status(ip, submission_id, 'running & judging')
+
             # run
             judger = Judger(run_config=run_config, max_cpu_time=time_limit,
                             max_memory=memory_limit, test_case_id=test_case_id,
-                            box_id=box_id, is_spj=is_spj)
+                            box_id=box_id, server_ip=ip, submission_id=submission_id, is_spj=is_spj)
             result = judger.run()
             judge_result = {"status": RESULT["accepted"], "info": result,
-                            "accepted_answer_time": None, "server": host_name}
+                            "time": None, "memory": None, "server": host_name}
             for item in judge_result["info"]:
                 if item["status"] != RESULT['accepted']:
                     judge_result["status"] = item["status"]
                     break
             else:
-                st = sorted(result, key=lambda k: k['meta']['time'])
-                judge_result["accepted_answer_time"] = st[-1]['meta']["time"]
+                st = sorted(result, key=lambda k: k['info']['time'])
+                judge_result["time"] = st[-1]['info']["time"] * 1000
+                # TODO 我也不知道为啥除了10之后内存和实际相符
+                # 2017.04.06 update:
+                # VSS - Virtual Set Size 虚拟耗用内存（包含共享库占用的内存）
+                # RSS - Resident Set Size 实际使用物理内存（包含共享库占用的内存）
+                # PSS - Proportional Set Size 实际使用的物理内存（比例分配共享库占用的内存）
+                # USS - Unique Set Size 进程独自占用的物理内存（不包含共享库占用的内存）
+                # 目前来看大概rss/10=uss
+                # 经过测试 poj使用的是uss hdu使用的是rss
+                judge_result["memory"] = st[-1]['info']["max-rss"]
+
+            judge_result["status"] = RE_RESULT[judge_result["status"]]
+            for item in judge_result["info"]:
+                item["status"] = RE_RESULT[item["status"]]
+
             return judge_result
 
     def post(self):
         args = self.reqparse.parse_args()
+        ip = request.remote_addr
         try:
-            result = self.judge(args)
+            result = self.judge(args, ip)
+            print result
             return {'code': 0, 'result': result}
         except CompileError as e:
             logger.exception(e)
             ret = dict()
             ret["err"] = e.__class__.__name__
             ret["data"] = e.message
-            result = {"status": RESULT["compile_error"], "info": ret, }
+            result = {"status": "compile error", "info": ret, }
             return {'code': 0, 'result': result}
         except (JudgeServerError, SandboxError) as e:
             logger.exception(e)
@@ -181,6 +197,8 @@ class VJudgeAPI(Resource):
         self.reqparse = reqparse.RequestParser()
 
         self.reqparse.add_argument('oj', type=int, choices=OJ.keys(), required=True, location='json')
+        # TODO change the oj type to string
+
         self.reqparse.add_argument('problem_id', type=str, required=True, location='json')
         self.reqparse.add_argument('language_name', type=str, required=True, location='json')
         self.reqparse.add_argument('src_code', type=str, required=True, location='json')
@@ -195,28 +213,16 @@ class VJudgeAPI(Resource):
         oj = args['oj']
         username = args['username']
         pwd = args['password']
-        result = {}
-        if 1 == oj:  # poj
-            if username:
-                result = poj_submit(args['problem_id'], args['language_name'], args['src_code'],
-                                    args['ip'], args['submission_id'], username, pwd)
-            else:
-                result = poj_submit(args['problem_id'], args['language_name'], args['src_code'],
-                                    args['ip'], args['submission_id'],)
-        elif 2 == oj:  # hdu
-            if username:
-                result = hdu_submit(args['problem_id'], args['language_name'], args['src_code'],
-                                    args['ip'], args['submission_id'], username, pwd)
-            else:
-                result = hdu_submit(args['problem_id'], args['language_name'], args['src_code'],
-                                    args['ip'], args['submission_id'],)
-        elif 3 == oj:  # codeforces
-            if username:
-                result = cf_submit(args['problem_id'], args['language_name'], args['src_code'],
-                                   args['ip'], args['submission_id'], username, pwd)
-            else:
-                result = cf_submit(args['problem_id'], args['language_name'], args['src_code'],
-                                   args['ip'], args['submission_id'],)
+        oj_name = OJ[oj]
+        func_name = '{oj}_submit'.format(oj=oj_name)
+        func = eval(func_name)
+        if username:
+            result = func(args['problem_id'], args['language_name'], args['src_code'],
+                          args['ip'], args['submission_id'], username, pwd)
+        else:
+            result = func(args['problem_id'], args['language_name'], args['src_code'],
+                          args['ip'], args['submission_id'],)
+
         return result
 
     def post(self):
@@ -251,7 +257,7 @@ class TestCaseHashAPI(Resource):
         args = self.reqparse.parse_args()
         test_case_id = args['test_case_id']
         path = os.path.join(BASE_PATH, 'test_case', test_case_id)
-        value = getHashOfDir(path)
+        value = get_dir_hash(path)
         return value
 
 
@@ -261,17 +267,21 @@ class SyncAPI(Resource):
     def __init__(self):
         self.reqparse = reqparse.RequestParser()
         self.reqparse.add_argument('test_case_id', type=str, required=True)
-        self.reqparse.add_argument('file', type=FileStorage, location='files', required=True)
+        self.reqparse.add_argument('zipfile', type=FileStorage, location='files', required=True)
 
     def post(self):
         args = self.reqparse.parse_args()
         test_case_id = args['test_case_id']
-        s_file = args['file']
+        s_file = args['zipfile']
+        print type(test_case_id), test_case_id
 
         if test_case_id == 'ALL':
             aim = os.path.join(BASE_PATH, 'test_case')
         else:
             aim = os.path.join(BASE_PATH, 'test_case', str(test_case_id))
+            hash_dir = os.path.join(BASE_PATH, 'test_case', 'md5', str(test_case_id))
+            if os.path.exists(hash_dir):
+                shutil.rmtree(hash_dir,ignore_errors=True)
         if os.path.exists(aim):
             shutil.rmtree(aim, ignore_errors=True)
 

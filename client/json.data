@@ -1,0 +1,9 @@
+{"code": 0, "data": {"ip": "127.0.0.1", "judger_version": "The process isolator 1.3\n(c) 2012--2016 Martin Mares and Bernard Blackham\nBuilt on 2016-12-28 from Git commit v1.3-3-g7f55e36", "hostname": "rhyme-X550JK", "cpu_core": 4, "memory": 47.2, "cpu": 5.1, "more": "powered by crazyX for LETTers"}}
+
+{"code": 2, "result": {"data": "IOError:", "err": "JudgeClientError"}}
+
+{"code": 0, "data": {"ip": "127.0.0.1", "judger_version": "The process isolator 1.3\n(c) 2012--2016 Martin Mares and Bernard Blackham\nBuilt on 2016-12-28 from Git commit v1.3-3-g7f55e36", "hostname": "rhyme-X550JK", "cpu_core": 4, "memory": 48.7, "cpu": 10.0, "more": "powered by crazyX for LETTers"}}
+
+{"code": 2, "result": {"data": "IOError:", "err": "JudgeClientError"}}{"code": 0, "data": {"ip": "127.0.0.1", "judger_version": "The process isolator 1.3\n(c) 2012--2016 Martin Mares and Bernard Blackham\nBuilt on 2016-12-28 from Git commit v1.3-3-g7f55e36", "hostname": "rhyme-X550JK", "cpu_core": 4, "memory": 50.4, "cpu": 24.3, "more": "powered by crazyX for LETTers"}}
+
+{"code": 0, "result": {"status": "accepted", "info": [{"info": {"time-wall": 0.049, "max-rss": 1472, "csw-forced": 1, "error": "", "cg-mem": 5932, "time": 0.0, "csw-voluntary": 5, "exitcode": 0}, "status": "accepted", "test_case": "1.in"}, {"info": {"time-wall": 0.049, "max-rss": 1472, "csw-forced": 1, "error": "", "cg-mem": 5932, "time": 0.0, "csw-voluntary": 5, "exitcode": 0}, "status": "accepted", "test_case": "2.in"}], "server": "rhyme-X550JK", "time": 0.0, "memory": 1472}}

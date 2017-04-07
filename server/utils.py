@@ -1,17 +1,19 @@
 # coding=utf-8
 from __future__ import unicode_literals, with_statement
-from config import REMOTE_DEBUG
-import psutil
-import socket
-import logging
-from logging.handlers import RotatingFileHandler
-import os
+
 import commands
 import hashlib
+import logging
+import os
 import shutil
 import signal
+import socket
 from contextlib import contextmanager
+from logging.handlers import RotatingFileHandler
 
+import psutil
+
+from config import REMOTE_DEBUG
 from config import TOKEN_FILE_PATH, JUDGE_DEFAULT_PATH, DEBUG
 from exception import SandboxError,JudgeServerError
 
@@ -60,6 +62,7 @@ def time_limit(seconds):
         yield
     finally:
         signal.alarm(0)
+
 
 def server_info():
     cmd = 'isolate --version'
@@ -155,7 +158,7 @@ class InitIsolateEnv(object):
             raise JudgeServerError("failed to clean runtime dir")
 
 
-def getHashOfDir(directory):
+def get_dir_hash(directory):
     import checksumdir
     if os.path.exists(directory):
         return checksumdir.dirhash(directory, 'sha256')
@@ -164,12 +167,9 @@ def getHashOfDir(directory):
 
 
 token = hashlib.sha256(get_token()).hexdigest()
-
-
-def updateSubmission(remote_addr, sid, status):
-    print remote_addr, sid, status, token
+web_server_token = 'server_token'
 
 if __name__ == '__main__':
-    while True:
-        logger.info('data')
-    # print getHashOfDir(os.path.join(os.getcwd(), 'test_case', 'c'), 1)
+    # while True:
+    #     logger.info('data')
+    print get_dir_hash(os.path.join(os.getcwd(), 'test_case', 'a'))

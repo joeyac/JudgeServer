@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from utils import logger, updateSubmission
+from utils import logger
+from update_status import update_submission_status
 from exception import VSubmitFailed, VLoginFailed
 from bs4 import BeautifulSoup
 import html5lib
@@ -104,6 +105,15 @@ class POJ:
             logger.error(e)
             return False
 
+    @staticmethod
+    def str2int(string):
+        if not string:
+            return 0
+        try:
+            return int(string[:-1])
+        except:
+            return int(string[:-2])
+
     def result(self):
         try:
             url_data = {
@@ -142,10 +152,13 @@ class POJ:
             if not self.run_id:
                 self.run_id = latest[0]
 
-            wait = ['Running & Judging','Compiling','Waiting']
+            wait = ['running & judging','compiling','waiting']
             res = {}
             for i in range(9):
-                res[POJ.MAP[name[i]]] = latest[i]
+                res[POJ.MAP[name[i]]] = str(latest[i]).lower()
+
+            res['time'] = self.str2int(res['time'])
+            res['memory'] = self.str2int(res['memory'])
 
             for i in range(3):
                 if res['status'] == wait[i]:
@@ -157,15 +170,15 @@ class POJ:
             return False, {}
 
 
-def poj_submit(problem_id, language_name, src_code, ip, sid, username='USTBVJ', password='USTBVJ'):
+def poj_submit(problem_id, language_name, src_code, ip=None, sid=None, username='USTBVJ', password='USTBVJ'):
     poj = POJ(username, password)
     if poj.login():
         if poj.submit(problem_id, language_name, src_code):
             status, result = poj.result()
             while not status:
                 status, result = poj.result()
-                if result:
-                    updateSubmission(ip, sid, result['status'])
+                if result and ip:
+                    update_submission_status(ip, sid, result['status'])
                 time.sleep(2)
             return result
         else:
@@ -190,4 +203,4 @@ if __name__ == '__main__':
         return 0;
     }
     '''
-    poj_submit(pid, lang, src)
+    print poj_submit(pid, lang, src)
