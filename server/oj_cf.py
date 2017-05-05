@@ -139,7 +139,7 @@ class CF:
         return True, res
 
 
-def codeforces_submit(problem_id, language_name, src_code, ip=None, sid=None, username='ineedAC', password='x970307jw'):
+def codeforces_submit(problem_id, language_name, src_code, ip=None, sid=None, username='ineedAC', password='USTBVJ'):
     cf = CF(username, password)
     if cf.login():
 
@@ -179,7 +179,3 @@ if __name__ == '__main__':
     }
     '''
     print codeforces_submit(pid, lang, src)
-    # uid = 'ineedAC'
-    # pwd = 'x970307jw'
-    # c = CF(uid, pwd)
-    # print c.result()
