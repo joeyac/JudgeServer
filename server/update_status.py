@@ -14,7 +14,7 @@ class StatusWorker(Thread):
     def run(self):
         while True:
             address, sid, status = self.queue.get()
-            url = 'http://{adr}:8000/api/submission/update/'.format(adr=address)
+            url = 'http://{adr}/api/submission/update/'.format(adr=address)
             headers = {"Content-Type": "application/json"}
             data = {
                 'token': web_server_token,
@@ -39,5 +39,5 @@ logger.info('init update status env.')
 
 
 def update_submission_status(address, sid, status):
-    print address, sid, status
+    # print address, sid, status
     que.put([address, sid, status])

@@ -167,7 +167,7 @@ def get_dir_hash(directory):
 
 
 token = hashlib.sha256(get_token()).hexdigest()
-web_server_token = 'server_token'
+web_server_token = 'server_token_you'
 
 if __name__ == '__main__':
     # while True:

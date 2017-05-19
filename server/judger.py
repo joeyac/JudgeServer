@@ -51,6 +51,7 @@ class Judger(object):
             os.makedirs(self.md5dir)
 
     def _load_test_case_info(self):
+	logger.info(self.test_case_dir + 'flag')
         try:
             with open(os.path.join(self.test_case_dir, "info")) as f:
                 return json.loads(f.read())
@@ -189,7 +190,7 @@ class Judger(object):
             elif run_result['status'] == Runner.RESULT['unknown_error'] or Runner.RESULT['runtime_error']:
                 run_result['status'] = RESULT['runtime_error']
             else:
-                run_result['status'] = RESULT['system_error']
+                run_result['status'] = RESULT['runtime_error']
         return run_result
 
     def run(self):
@@ -199,8 +200,8 @@ class Judger(object):
         cnt = len(self.test_case_info)
         for case_id in range(cnt):
             info = self.test_case_info[case_id]
-            if DEBUG >> DEBUG_JUDGER & 1:
-                info_str = 'running on test case ' + str(case_id + 1) + '.'
+            info_str = 'running on test case ' + str(case_id + 1) + '.'
+	    if DEBUG >> DEBUG_JUDGER & 1:
                 logger.info(info_str)
             update_submission_status(self.server_ip, self.submission_id, info_str)
             tmp_results.append(self.pool.apply_async(_run, (self, info)))

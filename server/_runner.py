@@ -35,8 +35,8 @@ class Runner(object):
         "memory_limit_exceeded": 3,
         "output_limit_exceeded": 4,
 
-        "system_error": 5,
-        "unknown_error": 6,
+        "system_error": 8,
+        "unknown_error": 8,
     }
 
     def __init__(self, max_cpu_time, max_real_time, max_memory, box_id,

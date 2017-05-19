@@ -94,6 +94,7 @@ class JudgeAPI(Resource):
                 memory_limit = args['memory_limit']
             test_case_id = args['test_case_id']
             submission_id = args['submission_id']
+	    logger.exception(test_case_id)
 
             path = os.path.join(JUDGE_DEFAULT_PATH, str(box_id))
             host_name = socket.gethostname()
